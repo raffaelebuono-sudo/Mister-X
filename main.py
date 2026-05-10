@@ -113,8 +113,12 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
     Stille führt nicht zum Schlaf – er hört einfach weiter zu.
     """
     core.bus.set_state(JarvisState.SLEEPING)
-    wake.wait_for_wake(on_chunk=_log_chunk)
-    log.info("Wake-Phrase erkannt.")
+    trigger = wake.wait_for_wake(on_chunk=_log_chunk)
+    source = "clap" if trigger == "[clap]" else "wake_word"
+    log.info("Aktivierung über %s.", source)
+
+    # Dashboard sofort nach vorne holen
+    core.bus.push_activate(source)
 
     core.bus.set_state(JarvisState.SPEAKING, "Ja?")
     core.speaker.say("Ja, wie kann ich helfen?")

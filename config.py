@@ -40,6 +40,16 @@ class Config:
     # --- Wake-Phrase ---
     wake_phrase: str = "jarvis"
 
+    # --- Klatsch-Aktivierung ---
+    # Doppel-Klatschen aktiviert JARVIS ebenfalls. Pro Audio-Chunk werden
+    # RMS-Peaks gesucht und die Abstände zwischen zwei aufeinanderfolgenden
+    # Peaks in Millisekunden geprüft.
+    clap_enabled: bool = True
+    clap_threshold: float = 0.35       # RMS-Schwelle 0..1 (0.35 = recht laut)
+    clap_min_count: int = 2            # mindestens Doppel-Klatschen
+    clap_min_gap_ms: int = 120         # Minimal-Abstand zwischen Klatschern
+    clap_max_gap_ms: int = 700         # Maximal-Abstand
+
     # --- Konversations-Modus ---
     # Nach der Wake-Phrase nimmt JARVIS Folgefragen an, ohne dass die
     # Wake-Phrase wiederholt werden muss. Erst nach dieser Zahl stiller

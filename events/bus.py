@@ -82,6 +82,30 @@ class EventBus:
     def push_system(self, stats: Dict[str, Any]) -> None:
         self.publish({"type": "system", "stats": stats})
 
+    def push_brain(self, kind: str, content: str = "", meta: Optional[dict] = None) -> None:
+        """Live-Eintrag im 'Brain-Activity'-Feed des Dashboards.
+
+        kind: z. B. 'tool', 'memory', 'agent', 'speech', 'thinking', 'computer'.
+        content: kurze Beschreibung (eine Zeile).
+        meta: optionale Zusatzdaten (z. B. Dauer, Token-Anzahl).
+        """
+        payload = {
+            "type": "brain",
+            "kind": kind,
+            "content": content,
+            "ts": _now_iso(),
+        }
+        if meta:
+            payload["meta"] = meta
+        self.publish(payload)
+
+    def push_activate(self, source: str) -> None:
+        """Signalisiert dem Dashboard, das Fenster nach vorne zu holen.
+
+        source: 'wake_word' | 'clap'
+        """
+        self.publish({"type": "activate", "source": source, "ts": _now_iso()})
+
     # --- Intern ---
 
     async def _broadcast(self, text: str) -> None:

@@ -65,17 +65,24 @@ class JarvisCore:
             return ""
         with self._lock:
             self.bus.push_chat("user", text)
+            self.bus.push_brain("thinking", f"verarbeite: {text[:60]}")
             self.bus.set_state(JarvisState.THINKING)
             try:
                 reply = self.brain.ask(text)
             except Exception as exc:
                 self.bus.set_state(JarvisState.ERROR, str(exc))
+                self.bus.push_brain("error", str(exc))
                 raise
             self.bus.push_chat("assistant", reply)
 
         if speak:
             self.bus.set_state(JarvisState.SPEAKING, reply)
+            # Dem Dashboard sagen, dass die Sprachausgabe startet
+            # (Länge wird genutzt, um die Kugel-Pulsation zu timen).
+            self.bus.push_brain("speech_start", reply,
+                                meta={"chars": len(reply)})
             self.speaker.say(reply)
+            self.bus.push_brain("speech_end", "")
 
         # Im Hintergrund Fakten über den Benutzer extrahieren (Haiku, billig).
         threading.Thread(
@@ -247,13 +254,16 @@ class JarvisCore:
             self._computer_agent = ComputerAgent(self)
         prev_state = self.bus._state
         self.bus.set_state(JarvisState.THINKING, f"Computer-Use: {task[:60]}")
+        self.bus.push_brain("computer", f"steuert Mac: {task[:80]}")
         try:
             result = self._computer_agent.run(task)
         except Exception as exc:
             self.bus.set_state(JarvisState.ERROR, str(exc))
+            self.bus.push_brain("error", f"Computer-Use: {exc}")
             return f"Computer-Use fehlgeschlagen: {exc}"
         finally:
             self.bus.set_state(prev_state)
+        self.bus.push_brain("computer_done", result[:120])
         # Als Briefing ablegen, damit der Verlauf erhalten bleibt
         self.briefings.add(
             "computer_use", f"Mac-Aktion: {task[:60]}", result,
@@ -275,6 +285,7 @@ class JarvisCore:
     def _scheduled_run(self, agent: Agent) -> None:
         print(f"[Scheduler] Starte Agent '{agent.name}' "
               f"({datetime.now():%H:%M:%S}).")
+        self.bus.push_brain("agent", f"{agent.name} läuft")
         try:
             result = agent.run(agent.default_instruction)
             self.bus.publish({
@@ -282,8 +293,11 @@ class JarvisCore:
                 "briefing": result,
                 "unread_total": self.briefings.count_unread(),
             })
+            self.bus.push_brain("agent_done",
+                                f"{agent.name}: {result.get('title', '')}")
         except Exception as exc:
             print(f"[Scheduler] {agent.name}: {exc}")
+            self.bus.push_brain("error", f"Agent {agent.name}: {exc}")
 
     def start_scheduler(self) -> None:
         self.scheduler.start()

@@ -91,6 +91,14 @@ class ClaudeClient:
             if block.type != "tool_use":
                 continue
             print(f"[Tool] {block.name}({block.input})")
+            # Live-Event ans Dashboard (Brain-Activity-Feed)
+            if self._tools is not None:
+                try:
+                    self._tools._core.bus.push_brain(
+                        "tool", f"{block.name}({_short_args(block.input)})",
+                    )
+                except Exception:
+                    pass
             output = (
                 self._tools.dispatch(block.name, block.input)
                 if self._tools
@@ -116,3 +124,16 @@ class ClaudeClient:
 
     def close(self) -> None:
         self._memory.close()
+
+
+def _short_args(args: dict, max_len: int = 60) -> str:
+    """Kurzfassung der Tool-Argumente für die Brain-Activity-Anzeige."""
+    if not args:
+        return ""
+    parts = []
+    for k, v in args.items():
+        s = str(v).replace("\n", " ")
+        if len(s) > max_len:
+            s = s[:max_len] + "…"
+        parts.append(f"{k}={s!r}")
+    return ", ".join(parts)
