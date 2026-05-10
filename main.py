@@ -91,6 +91,7 @@ def main() -> int:
 
 
 def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None:
+    """Eine Sitzung: einmal aufwecken, dann beliebig viele Folgefragen."""
     core.bus.set_state(JarvisState.SLEEPING)
     wake.wait_for_wake(on_chunk=_log_chunk)
     log.info("Wake-Phrase erkannt.")
@@ -98,22 +99,57 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
     core.bus.set_state(JarvisState.SPEAKING, "Guten Morgen.")
     core.speaker.say("Guten Morgen. Wie kann ich helfen?")
 
-    core.bus.set_state(JarvisState.LISTENING)
-    command = core.listener.listen_and_transcribe(cfg.command_seconds).strip()
-    if not command:
-        core.bus.set_state(JarvisState.SPEAKING)
-        core.speaker.say("Ich habe nichts gehört.")
-        return
+    silent_rounds = 0
+    max_silent = max(1, cfg.silent_rounds_until_sleep)
 
-    log.info("Anfrage: %s", command)
-    print(f"[Du] {command}")
-    try:
-        reply = core.process_text(command, speak=True)
-        log.info("Antwort: %s", reply)
-        print(f"[JARVIS] {reply}")
-    except Exception as exc:
-        log.exception("Verarbeitung fehlgeschlagen: %s", exc)
-        core.speaker.say("Es gab ein Problem mit der Anfrage.")
+    while True:
+        core.bus.set_state(JarvisState.LISTENING)
+        command = core.listener.listen_and_transcribe(cfg.command_seconds).strip()
+
+        if not command:
+            silent_rounds += 1
+            log.info("Stille (%d/%d).", silent_rounds, max_silent)
+            if silent_rounds >= max_silent:
+                core.bus.set_state(JarvisState.SPEAKING)
+                core.speaker.say("Ich gehe wieder in den Standby. Sag Bescheid, wenn du mich brauchst.")
+                return
+            # Sonst: kurz wieder zuhören – vielleicht überlegt der Benutzer noch.
+            continue
+
+        silent_rounds = 0
+
+        if _is_goodbye(command):
+            log.info("Verabschiedung erkannt: %s", command)
+            core.bus.set_state(JarvisState.SPEAKING)
+            core.speaker.say("Bis später.")
+            return
+
+        log.info("Anfrage: %s", command)
+        print(f"[Du] {command}")
+        try:
+            reply = core.process_text(command, speak=True)
+            log.info("Antwort: %s", reply)
+            print(f"[JARVIS] {reply}")
+        except Exception as exc:
+            log.exception("Verarbeitung fehlgeschlagen: %s", exc)
+            core.bus.set_state(JarvisState.ERROR, str(exc))
+            core.speaker.say("Es gab ein Problem mit der Anfrage.")
+        # Schleife läuft weiter – nächste Frage ohne Wake-Phrase.
+
+
+_GOODBYE_PHRASES = (
+    "tschüss", "tschuess", "tschüß",
+    "schlaf gut", "gute nacht",
+    "bis später", "bis spaeter",
+    "danke das wars", "danke das war's",
+    "danke jarvis das wars", "danke jarvis das war's",
+    "ende jarvis", "stopp jarvis", "stop jarvis", "ruhe jetzt",
+)
+
+
+def _is_goodbye(text: str) -> bool:
+    t = text.lower().strip()
+    return any(p in t for p in _GOODBYE_PHRASES)
 
 
 def _system_monitor_loop(core: JarvisCore, stop_flag: threading.Event) -> None:

@@ -40,6 +40,12 @@ class Config:
     # --- Wake-Phrase ---
     wake_phrase: str = "guten morgen jarvis"
 
+    # --- Konversations-Modus ---
+    # Nach der Wake-Phrase nimmt JARVIS Folgefragen an, ohne dass die
+    # Wake-Phrase wiederholt werden muss. Erst nach dieser Zahl stiller
+    # Aufnahme-Runden (oder einer Verabschiedung) geht er wieder schlafen.
+    silent_rounds_until_sleep: int = 2
+
     # --- Persönlichkeit ---
     assistant_name: str = "JARVIS"
 
