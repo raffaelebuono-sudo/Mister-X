@@ -91,7 +91,12 @@ def main() -> int:
 
 
 def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None:
-    """Eine Sitzung: einmal aufwecken, dann beliebig viele Folgefragen."""
+    """Eine Sitzung: einmal aufwecken, dann beliebig viele Folgefragen.
+
+    Nach der Wake-Phrase bleibt JARVIS aktiv, bis er explizit verabschiedet
+    wird ('tschüss', 'bis später', ...) oder das Programm beendet wird.
+    Stille führt nicht zum Schlaf – er hört einfach weiter zu.
+    """
     core.bus.set_state(JarvisState.SLEEPING)
     wake.wait_for_wake(on_chunk=_log_chunk)
     log.info("Wake-Phrase erkannt.")
@@ -99,24 +104,13 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
     core.bus.set_state(JarvisState.SPEAKING, "Ja?")
     core.speaker.say("Ja, wie kann ich helfen?")
 
-    silent_rounds = 0
-    max_silent = max(1, cfg.silent_rounds_until_sleep)
-
     while True:
         core.bus.set_state(JarvisState.LISTENING)
         command = core.listener.listen_and_transcribe(cfg.command_seconds).strip()
 
         if not command:
-            silent_rounds += 1
-            log.info("Stille (%d/%d).", silent_rounds, max_silent)
-            if silent_rounds >= max_silent:
-                core.bus.set_state(JarvisState.SPEAKING)
-                core.speaker.say("Ich gehe wieder in den Standby. Sag Bescheid, wenn du mich brauchst.")
-                return
-            # Sonst: kurz wieder zuhören – vielleicht überlegt der Benutzer noch.
+            # Stille – einfach weiter zuhören, ohne aufzugeben.
             continue
-
-        silent_rounds = 0
 
         if _is_goodbye(command):
             log.info("Verabschiedung erkannt: %s", command)
@@ -134,7 +128,6 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
             log.exception("Verarbeitung fehlgeschlagen: %s", exc)
             core.bus.set_state(JarvisState.ERROR, str(exc))
             core.speaker.say("Es gab ein Problem mit der Anfrage.")
-        # Schleife läuft weiter – nächste Frage ohne Wake-Phrase.
 
 
 _GOODBYE_PHRASES = (
