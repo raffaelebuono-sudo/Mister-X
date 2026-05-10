@@ -38,7 +38,7 @@ class Config:
     command_seconds: float = 10.0      # Dauer der eigentlichen Aufnahme nach Wake-Word
 
     # --- Wake-Phrase ---
-    wake_phrase: str = "guten morgen jarvis"
+    wake_phrase: str = "jarvis"
 
     # --- Konversations-Modus ---
     # Nach der Wake-Phrase nimmt JARVIS Folgefragen an, ohne dass die

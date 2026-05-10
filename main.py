@@ -96,8 +96,8 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
     wake.wait_for_wake(on_chunk=_log_chunk)
     log.info("Wake-Phrase erkannt.")
 
-    core.bus.set_state(JarvisState.SPEAKING, "Guten Morgen.")
-    core.speaker.say("Guten Morgen. Wie kann ich helfen?")
+    core.bus.set_state(JarvisState.SPEAKING, "Ja?")
+    core.speaker.say("Ja, wie kann ich helfen?")
 
     silent_rounds = 0
     max_silent = max(1, cfg.silent_rounds_until_sleep)
