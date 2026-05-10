@@ -71,6 +71,8 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\n[JARVIS] Bis später.")
         return 0
+    finally:
+        brain.close()
 
 
 def _log_chunk(text: str) -> None:

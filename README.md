@@ -50,10 +50,12 @@ Mit `Strg+C` beenden.
 ├── brain/
 │   ├── claude_client.py     # Claude-API mit Gesprächs-Historie
 │   └── system_prompt.py     # JARVIS-Persönlichkeit
-└── voice/
-    ├── listener.py          # Mikrofon + Whisper
-    ├── speaker.py           # ElevenLabs / macOS 'say'
-    └── wake_word.py         # „Guten Morgen JARVIS"-Erkennung
+├── voice/
+│   ├── listener.py          # Mikrofon + Whisper
+│   ├── speaker.py           # ElevenLabs / macOS 'say'
+│   └── wake_word.py         # „Guten Morgen JARVIS"-Erkennung
+└── data/
+    └── jarvis.db            # SQLite-Gedächtnis (wird automatisch angelegt)
 ```
 
 ## Phasen-Plan
@@ -61,7 +63,7 @@ Mit `Strg+C` beenden.
 | Phase | Inhalt | Status |
 |------:|--------|--------|
 | 1 | Sprachkern (Whisper, Claude, TTS) | ✅ |
-| 2 | SQLite-Gedächtnis & Persönlichkeits-Tuning | offen |
+| 2 | SQLite-Gedächtnis & Persönlichkeits-Tuning | ✅ |
 | 3 | Tools: Web-Suche, macOS-Steuerung, Aufgaben | offen |
 | 4 | Visuelle Kugel (Electron + Three.js) | offen |
 | 5 | Vollständiges Dashboard | offen |

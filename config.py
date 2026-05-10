@@ -43,6 +43,10 @@ class Config:
     # --- Persönlichkeit ---
     assistant_name: str = "JARVIS"
 
+    # --- Gedächtnis (Phase 2) ---
+    db_path: Path = PROJECT_ROOT / "data" / "jarvis.db"
+    memory_pairs: int = 20   # Anzahl Q/A-Paare als Kontext
+
     @classmethod
     def from_env(cls) -> "Config":
         api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
