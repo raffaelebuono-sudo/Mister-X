@@ -47,9 +47,10 @@ class Config:
     db_path: Path = PROJECT_ROOT / "data" / "jarvis.db"
     memory_pairs: int = 20   # Anzahl Q/A-Paare als Kontext
 
-    # --- WebSocket-Server (Phase 4) ---
-    ws_host: str = "127.0.0.1"
-    ws_port: int = 8765
+    # --- Web-Server (Phase 4 + 6) ---
+    # 0.0.0.0, damit das iPhone im gleichen WLAN zugreifen kann.
+    web_host: str = "0.0.0.0"
+    web_port: int = 8080
 
     @classmethod
     def from_env(cls) -> "Config":

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0a0e1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>JARVIS</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="dot" id="state-dot"></span>
+    <span class="state-label" id="state-label">verbinde…</span>
+    <span class="state-msg" id="state-msg"></span>
+  </header>
+
+  <main>
+    <!-- Chat -->
+    <section class="tab-content" data-tab="chat">
+      <div class="messages" id="messages"></div>
+    </section>
+
+    <!-- Aufgaben -->
+    <section class="tab-content hidden" data-tab="tasks">
+      <form id="add-task-form" autocomplete="off">
+        <input type="text" id="new-task" placeholder="Neue Aufgabe…" required>
+        <input type="datetime-local" id="new-task-due">
+        <button type="submit">Hinzufügen</button>
+      </form>
+      <ul id="task-list"></ul>
+    </section>
+
+    <!-- Status -->
+    <section class="tab-content hidden" data-tab="status">
+      <div class="card">
+        <h3>Mac</h3>
+        <div class="metric"><span>CPU</span><b id="cpu">–</b></div>
+        <div class="metric"><span>RAM</span><b id="ram">–</b></div>
+        <div class="metric"><span>Festplatte</span><b id="disk">–</b></div>
+        <div class="metric"><span>Akku</span><b id="battery">–</b></div>
+      </div>
+      <div class="card">
+        <h3>JARVIS</h3>
+        <div class="metric"><span>Uptime</span><b id="jarvis-uptime">–</b></div>
+        <div class="metric"><span>System läuft</span><b id="system-uptime">–</b></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Composer (nur sichtbar im Chat-Tab) -->
+  <form id="composer" class="composer">
+    <input type="text" id="chat-input" placeholder="Frage tippen…" autocomplete="off">
+    <label class="speak-toggle">
+      <input type="checkbox" id="speak-checkbox"> 🔊
+    </label>
+    <button type="submit">Senden</button>
+  </form>
+
+  <!-- Tab-Leiste unten -->
+  <nav class="tabs">
+    <button data-tab="chat" class="active">💬 Chat</button>
+    <button data-tab="tasks">✅ Aufgaben</button>
+    <button data-tab="status">📊 Status</button>
+  </nav>
+
+  <script src="/static/app.js" type="module"></script>
+</body>
+</html>

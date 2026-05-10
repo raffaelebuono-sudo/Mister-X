@@ -8,7 +8,8 @@ scipy>=1.11.0              # WAV-Datei Schreiben
 python-dotenv>=1.0.0       # .env Datei laden
 requests>=2.31.0           # HTTP – z. B. für Tavily Web-Suche
 psutil>=5.9.0              # System-Monitor (CPU, RAM, Akku, Disk)
-websockets>=12.0           # WebSocket-Server für Kugel/Dashboard (Phase 4)
+fastapi>=0.110.0           # HTTP + WebSocket-Server (Phase 4 + 6)
+uvicorn[standard]>=0.27.0  # ASGI-Server für FastAPI
 
 # Optional
 elevenlabs>=1.0.0          # Natürliche deutsche Stimme (sonst macOS 'say')

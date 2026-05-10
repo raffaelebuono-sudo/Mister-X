@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { STATES, DEFAULT_STATE } from './states.js';
 
-const WS_URL = 'ws://127.0.0.1:8765';
+const WS_URL = 'ws://127.0.0.1:8080/ws';
 const canvas = document.getElementById('orb');
 
 // --- Three.js-Setup ---

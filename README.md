@@ -110,6 +110,27 @@ Voice und Dashboard nutzen denselben `JarvisCore` und denselben
 `Memory`-Speicher, sodass eine getippte Frage und eine gesprochene
 Frage gleichberechtigt sind.
 
+## iPhone Web-Interface (Phase 6)
+
+JARVIS startet automatisch einen FastAPI-Server auf `http://0.0.0.0:8080`.
+Ist das iPhone im selben WLAN, ist JARVIS unter
+`http://<IP-des-Macs>:8080` oder `http://jarvis.local:8080`
+erreichbar (sofern Bonjour läuft).
+
+- **`/`** — Mobile Web-Frontend (Tabs: Chat, Aufgaben, Status)
+- **`/ws`** — Gleicher WebSocket-Pfad wie für die Electron-App
+- **REST**:
+  - `GET /api/status` — JARVIS- und System-Status
+  - `GET /api/history?limit=N` — Chat-Verlauf
+  - `POST /api/chat` — `{ "content": "...", "speak": false }`
+  - `GET /api/tasks` — offene Aufgaben
+  - `POST /api/tasks` — `{ "title": "...", "due_at": null }`
+  - `POST /api/tasks/{id}/complete`
+
+Hinweis: Da der Server an `0.0.0.0` lauscht, ist er für alle Geräte im
+WLAN sichtbar – das ist genau gewollt für den iPhone-Zugriff. Wer das
+nicht will, setzt `web_host = "127.0.0.1"` in `config.py`.
+
 ## Phasen-Plan
 
 | Phase | Inhalt | Status |
@@ -119,7 +140,7 @@ Frage gleichberechtigt sind.
 | 3 | Tools: Web-Suche, macOS-Steuerung, Aufgaben, System-Monitor | ✅ |
 | 4 | Visuelle Kugel (Electron + Three.js) | ✅ |
 | 5 | Vollständiges Dashboard | ✅ |
-| 6 | iPhone Web-Interface | offen |
+| 6 | iPhone Web-Interface | ✅ |
 | 7 | 24/7-Betrieb (LaunchAgent) | offen |
 
 ## Hinweise

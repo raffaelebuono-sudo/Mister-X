@@ -1,48 +1,54 @@
-// JARVIS-Dashboard – Live-Verbindung zum Backend via WebSocket.
-//
-// Empfangene Nachrichten haben ein `type`-Feld und werden an die
-// passenden Handler verteilt. Eingaben (Chat, Aufgaben) werden als
-// JSON über denselben Socket gesendet.
-
-const WS_URL = 'ws://127.0.0.1:8080/ws';
+// JARVIS Mobile Web-Frontend.
+// Verbindet sich relativ zur Origin (egal ob localhost oder jarvis.local).
 
 const $ = (id) => document.getElementById(id);
 
 const stateDot = $('state-dot');
 const stateLabel = $('state-label');
-const stateMsg = $('state-message');
+const stateMsg = $('state-msg');
 const messagesEl = $('messages');
 const composer = $('composer');
 const chatInput = $('chat-input');
 const speakChk = $('speak-checkbox');
+const taskList = $('task-list');
+const addTaskForm = $('add-task-form');
+const newTaskInput = $('new-task');
+const newTaskDue = $('new-task-due');
 const cpuEl = $('cpu');
-const cpuBar = $('cpu-bar');
 const ramEl = $('ram');
 const diskEl = $('disk');
 const batteryEl = $('battery');
 const sysUptimeEl = $('system-uptime');
 const jarvisUptimeEl = $('jarvis-uptime');
-const taskList = $('task-list');
-const addTaskForm = $('add-task-form');
-const newTaskInput = $('new-task');
-const newTaskDue = $('new-task-due');
 
 const STATE_LABELS = {
-  sleeping: 'Schläft',
-  listening: 'Hört zu…',
-  thinking: 'Denkt…',
-  speaking: 'Spricht…',
-  error: 'Fehler',
-  success: 'Bereit',
+  sleeping: 'Schläft', listening: 'Hört zu…',
+  thinking: 'Denkt…', speaking: 'Spricht…',
+  error: 'Fehler',    success: 'Bereit',
 };
 
+// --- Tab-Steuerung ---
+const tabs = document.querySelectorAll('.tabs button');
+tabs.forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach((s) => {
+    s.classList.toggle('hidden', s.dataset.tab !== tab);
+  });
+  tabs.forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  composer.classList.toggle('hidden', tab !== 'chat');
+}
+
+// --- WebSocket-Verbindung ---
 let ws = null;
+function wsUrl() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${location.host}/ws`;
+}
 
 function connect() {
-  ws = new WebSocket(WS_URL);
-  ws.onopen = () => {
-    stateLabel.textContent = 'Verbunden';
-  };
+  ws = new WebSocket(wsUrl());
+  ws.onopen = () => { stateLabel.textContent = 'Verbunden'; };
   ws.onmessage = (e) => {
     let data;
     try { data = JSON.parse(e.data); } catch { return; }
@@ -56,7 +62,6 @@ function connect() {
   };
   ws.onclose = () => {
     stateLabel.textContent = 'getrennt';
-    stateDot.dataset.state = '';
     setTimeout(connect, 1500);
   };
   ws.onerror = () => ws.close();
@@ -78,7 +83,7 @@ function onState({ state, message }) {
 
 function onHistory({ messages }) {
   messagesEl.innerHTML = '';
-  for (const m of messages) addMessage(m);
+  messages.forEach(addMessage);
   scrollChat();
 }
 
@@ -108,7 +113,7 @@ function onTasks({ tasks }) {
   taskList.innerHTML = '';
   if (!tasks.length) {
     const li = document.createElement('li');
-    li.style.opacity = '.5';
+    li.style.opacity = '.55';
     li.textContent = 'Keine offenen Aufgaben.';
     taskList.appendChild(li);
     return;
@@ -124,11 +129,9 @@ function onTasks({ tasks }) {
       main.appendChild(due);
     }
     const btn = document.createElement('button');
-    btn.textContent = '✓';
-    btn.title = 'Erledigt';
+    btn.textContent = 'Erledigt';
     btn.addEventListener('click', () => send({ type: 'complete_task', task_id: t.id }));
-    li.appendChild(main);
-    li.appendChild(btn);
+    li.append(main, btn);
     taskList.appendChild(li);
   }
 }
@@ -140,9 +143,6 @@ function onSystem({ stats }) {
   batteryEl.textContent = stats.battery || '–';
   sysUptimeEl.textContent = stats.system_uptime || '–';
   jarvisUptimeEl.textContent = stats.jarvis_uptime || '–';
-  // CPU-Balken
-  const pct = parseInt(stats.cpu, 10);
-  if (!isNaN(pct)) cpuBar.style.width = Math.min(100, pct) + '%';
 }
 
 // --- Eingaben ---
@@ -163,28 +163,6 @@ addTaskForm.addEventListener('submit', (e) => {
   send({ type: 'add_task', title, due_at: due });
   newTaskInput.value = '';
   newTaskDue.value = '';
-});
-
-// Schnellaktionen: lösen einfache vordefinierte Anfragen aus.
-const QUICK_PROMPTS = {
-  news: 'Was sind die wichtigsten News heute?',
-  weather: 'Wie wird das Wetter heute und morgen?',
-  calendar: 'Öffne bitte die Kalender-App.',
-  reminder: null,    // Inline: fokussiert das Aufgaben-Eingabefeld
-  settings: null,    // Platzhalter für Phase 7
-};
-
-document.querySelectorAll('.quick').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const action = btn.dataset.action;
-    if (action === 'reminder') { newTaskInput.focus(); return; }
-    if (action === 'settings') {
-      stateMsg.textContent = 'Einstellungen: folgt in Phase 7.';
-      return;
-    }
-    const prompt = QUICK_PROMPTS[action];
-    if (prompt) send({ type: 'chat', content: prompt, speak: speakChk.checked });
-  });
 });
 
 // --- Helfer ---

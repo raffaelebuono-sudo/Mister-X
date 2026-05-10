@@ -16,7 +16,7 @@ import time
 
 from config import get_config
 from core import JarvisCore
-from dashboard.web_server.ws_server import WSServer
+from dashboard.web_server.server import WebServer
 from events.state import JarvisState
 from tools import system_monitor
 from voice.wake_word import WakeWordDetector
@@ -29,7 +29,7 @@ BANNER = r"""
  _|  / ___ \ |  \  /    _| |_____)|
 (__)/_/   \_\_|  \/    |_____|____/
 
-       Phase 5 – Vollständiges Dashboard
+       Phase 6 – Sprache + Dashboard + iPhone Web
 """
 
 SYSTEM_STATS_INTERVAL = 2.0  # Sekunden zwischen System-Pushes
@@ -44,8 +44,8 @@ def main() -> int:
         return 1
 
     core = JarvisCore(cfg)
-    ws = WSServer(core, host=cfg.ws_host, port=cfg.ws_port)
-    ws.start()
+    web = WebServer(core, host=cfg.web_host, port=cfg.web_port)
+    web.start()
 
     stop_flag = threading.Event()
     monitor = threading.Thread(
@@ -89,7 +89,7 @@ def main() -> int:
         return 0
     finally:
         stop_flag.set()
-        ws.stop()
+        web.stop()
         core.shutdown()
 
 
