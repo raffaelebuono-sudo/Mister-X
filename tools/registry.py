@@ -152,4 +152,74 @@ class ToolRegistry:
                 input_schema={"type": "object", "properties": {}},
                 fn=lambda: system_monitor.get_status_text(),
             ),
+            _Tool(
+                name="run_agent",
+                description=(
+                    "Startet einen Hintergrund-Agenten on-demand und liefert "
+                    "sein Briefing zurück. Verfügbare Agenten: morning_briefing "
+                    "(Tagesüberblick), news_watcher (aktuelle News), "
+                    "note_taker (Fakten aus dem Verlauf extrahieren)."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Name des Agenten"},
+                        "instruction": {
+                            "type": "string",
+                            "description": "Optionale spezifische Anweisung für den Agenten.",
+                        },
+                    },
+                    "required": ["name"],
+                },
+                fn=lambda name, instruction="": core.run_agent(name, instruction),
+            ),
+            _Tool(
+                name="list_briefings",
+                description=(
+                    "Listet die letzten Briefings, die JARVIS-Hintergrund-Agenten "
+                    "erstellt haben (z. B. Morgenbriefing, News-Watcher). "
+                    "Standardmäßig nur ungelesene."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "only_unread": {"type": "boolean"},
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 50},
+                    },
+                },
+                fn=lambda only_unread=True, limit=10: _format_briefings(
+                    core.list_briefings(only_unread, limit)
+                ),
+            ),
+            _Tool(
+                name="mark_briefings_read",
+                description=(
+                    "Markiert ein einzelnes Briefing oder alle als gelesen."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "briefing_id": {
+                            "type": "integer",
+                            "description": "ID eines Briefings; wenn weggelassen, alles als gelesen markieren.",
+                        },
+                    },
+                },
+                fn=lambda briefing_id=None: (
+                    f"Briefing {briefing_id} als gelesen markiert."
+                    if briefing_id is not None and core.mark_briefing_read(int(briefing_id))
+                    else f"{core.mark_all_briefings_read()} Briefings als gelesen markiert."
+                ),
+            ),
         ]
+
+
+def _format_briefings(items: list) -> str:
+    if not items:
+        return "Keine Briefings."
+    lines = []
+    for it in items:
+        lines.append(
+            f"#{it['id']} [{it['agent']}] {it['title']}\n  {it['content']}"
+        )
+    return "\n\n".join(lines)

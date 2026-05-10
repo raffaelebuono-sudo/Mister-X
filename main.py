@@ -62,6 +62,10 @@ def main() -> int:
     web = WebServer(core, host=cfg.web_host, port=cfg.web_port)
     web.start()
 
+    # Hintergrund-Agenten starten (Morning-Briefing, News-Watcher, ...)
+    core.start_scheduler()
+    log.info("Agenten-Scheduler läuft (%d Jobs).", len(core.scheduler.list_jobs()))
+
     # Schwebende Kugel automatisch mitstarten
     orb_proc = _start_orb(log) if cfg.auto_start_orb else None
 

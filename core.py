@@ -1,20 +1,21 @@
 """JarvisCore – zentraler Orchestrator.
 
-Bündelt Memory, Brain, Sprachausgabe, Tools, Aufgaben und Event-Bus
-hinter einer einfachen Fassade. Voice-Loop und Dashboard rufen die
-gleichen Methoden auf, sodass Tipp- und Sprach-Eingaben absolut
-gleichberechtigt sind.
-
-Thread-Sicherheit: `process_text` ist serialisiert (ein Lock), damit
-parallele Anfragen aus Voice-Loop und Dashboard nicht denselben
-Claude-Call gleichzeitig auslösen.
+Bündelt Memory, Brain, Sprachausgabe, Tools, Aufgaben, Event-Bus,
+Hintergrund-Agenten und Scheduler hinter einer einfachen Fassade.
+Voice-Loop und Dashboard rufen die gleichen Methoden auf, sodass
+Tipp- und Sprach-Eingaben absolut gleichberechtigt sind.
 """
 
 from __future__ import annotations
 
 import threading
+from datetime import datetime
 from typing import List, Optional
 
+from agents.agent import Agent
+from agents.builtin import DEFAULT_AGENTS
+from agents.scheduler import Scheduler
+from agents.store import BriefingsStore
 from brain.claude_client import ClaudeClient
 from brain.memory import Memory
 from config import Config
@@ -32,21 +33,26 @@ class JarvisCore:
         self.bus = EventBus()
         self.memory = Memory(cfg.db_path)
         self.tasks = TaskManager(cfg.db_path)
-        # Registry erfährt den Core, damit Tool-Aufrufe (z. B. add_task)
-        # die Dashboards informieren können.
+        self.briefings = BriefingsStore(cfg.db_path)
+
+        # Registry erfährt den Core, damit Tool-Aufrufe (z. B. add_task,
+        # run_agent, list_briefings) die Dashboards informieren können.
         self.tools = ToolRegistry(self)
         self.brain = ClaudeClient(memory=self.memory, tools=self.tools)
         self.listener = Listener()
         self.speaker = Speaker()
         self._lock = threading.Lock()
 
+        # Agenten registrieren und Scheduler aufsetzen
+        self._agents: dict[str, Agent] = {}
+        for agent in DEFAULT_AGENTS:
+            self.register_agent(agent)
+        self.scheduler = Scheduler()
+        self._setup_scheduler()
+
     # --- Anfragen verarbeiten ---
 
     def process_text(self, text: str, *, speak: bool) -> str:
-        """End-to-End-Verarbeitung einer Frage.
-
-        Pusht Chat- und State-Events an alle verbundenen Clients.
-        """
         text = text.strip()
         if not text:
             return ""
@@ -95,8 +101,70 @@ class JarvisCore:
     def chat_history(self, limit: int = 50) -> List[dict]:
         return self.memory.recent_with_ts(limit)
 
+    # --- Agenten ---
+
+    def register_agent(self, agent: Agent) -> None:
+        self._agents[agent.name] = agent.bind(self)
+
+    def list_agent_names(self) -> List[str]:
+        return list(self._agents.keys())
+
+    def run_agent(self, name: str, instruction: str = "") -> str:
+        """Lässt einen Agenten laufen und liefert sein Ergebnis."""
+        agent = self._agents.get(name)
+        if agent is None:
+            return f"Unbekannter Agent: {name}. Verfügbar: {', '.join(self._agents)}"
+        result = agent.run(instruction)
+        # Dashboard live informieren
+        self.bus.publish({
+            "type": "briefing",
+            "briefing": result,
+            "unread_total": self.briefings.count_unread(),
+        })
+        return result["content"]
+
+    def list_briefings(self, only_unread: bool = True, limit: int = 10) -> List[dict]:
+        return (self.briefings.unread(limit) if only_unread
+                else self.briefings.recent(limit))
+
+    def mark_briefing_read(self, briefing_id: int) -> bool:
+        return self.briefings.mark_read(briefing_id)
+
+    def mark_all_briefings_read(self) -> int:
+        return self.briefings.mark_all_read()
+
+    # --- Scheduler ---
+
+    def _setup_scheduler(self) -> None:
+        for agent in self._agents.values():
+            if not agent.schedule:
+                continue
+            self.scheduler.add(
+                name=agent.name,
+                spec=agent.schedule,
+                callback=lambda a=agent: self._scheduled_run(a),
+            )
+
+    def _scheduled_run(self, agent: Agent) -> None:
+        print(f"[Scheduler] Starte Agent '{agent.name}' "
+              f"({datetime.now():%H:%M:%S}).")
+        try:
+            result = agent.run(agent.default_instruction)
+            self.bus.publish({
+                "type": "briefing",
+                "briefing": result,
+                "unread_total": self.briefings.count_unread(),
+            })
+        except Exception as exc:
+            print(f"[Scheduler] {agent.name}: {exc}")
+
+    def start_scheduler(self) -> None:
+        self.scheduler.start()
+
     # --- Lifecycle ---
 
     def shutdown(self) -> None:
+        self.scheduler.stop()
         self.brain.close()
         self.tasks.close()
+        self.briefings.close()

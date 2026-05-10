@@ -148,6 +148,30 @@ nicht will, setzt `web_host = "127.0.0.1"` in `config.py`.
 | 5 | Vollständiges Dashboard | ✅ |
 | 6 | iPhone Web-Interface | ✅ |
 | 7 | 24/7-Betrieb (LaunchAgent), Logging, Polishing | ✅ |
+| 8 | Friday-Mode: Hintergrund-Agenten, Scheduler, Briefings | ✅ |
+
+## Friday-Mode: Hintergrund-Agenten (Phase 8)
+
+JARVIS hat jetzt eigene Agenten, die im Hintergrund arbeiten. Jeder Agent
+hat seine eigene Persönlichkeit, läuft mit eigenem Claude-Stream
+(unabhängig vom Haupt-Gedächtnis) und kann auf alle Tools zugreifen.
+
+| Agent | Zweck | Zeitplan |
+|-------|-------|----------|
+| `morning_briefing` | News + Aufgaben als Tagesüberblick | täglich 7:00 |
+| `news_watcher` | Eine wichtige News-Headline zusammenfassen | alle 4 h |
+| `note_taker` | Fakten aus dem Verlauf extrahieren | nur auf Anfrage |
+
+Ergebnisse landen als **Briefings** in der Datenbank. JARVIS ruft sie über
+die Tools `list_briefings`, `run_agent` und `mark_briefings_read` auf.
+
+**Beispiele:**
+- *„Jarvis, was ist neu?"* → liest dir die ungelesenen Briefings vor
+- *„Jarvis, mach mir jetzt eine Morgenbriefing"* → startet den Agenten on-demand
+- *„Jarvis, fasse meine letzten Gespräche zusammen"* → lässt den `note_taker` laufen
+
+Der Scheduler tickt einmal pro Minute. Wenn JARVIS zur geplanten Zeit nicht
+läuft, wird der nächste Lauf einfach beim nächsten Match nachgeholt.
 
 ## Autostart (Phase 7)
 
