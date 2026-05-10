@@ -89,8 +89,26 @@ npm start          # öffnet die Kugel
 ```
 
 - **Verschieben**: Kugel mit gedrückter Maustaste ziehen.
-- **Klick**: öffnet das Dashboard-Fenster (Inhalt folgt in Phase 5).
+- **Klick**: öffnet das Dashboard-Fenster.
 - WebSocket-Endpunkt: `ws://127.0.0.1:8765` (in `config.py` änderbar).
+
+## Dashboard (Phase 5)
+
+Das Dashboard zeigt den vollständigen Status und erlaubt Tipp-Eingaben
+parallel zur Sprache.
+
+- **Status-Bar oben**: aktueller Zustand und letzte Nachricht
+- **Chat (Mitte)**: kompletter Verlauf, Texteingabe unten,
+  Häkchen „vorlesen" steuert TTS pro Tipp-Eingabe
+- **System-Monitor (rechts)**: CPU/RAM/Festplatte/Akku live (alle 2 s)
+- **Aufgaben (unten)**: aktive Aufgaben als Karten, Sofort-Erledigen-Button,
+  Schnell-Hinzufügen mit optionalem Fälligkeitsdatum
+- **Sidebar (links)**: Schnellaktionen (News, Wetter, Kalender, Erinnerung,
+  Einstellungen)
+
+Voice und Dashboard nutzen denselben `JarvisCore` und denselben
+`Memory`-Speicher, sodass eine getippte Frage und eine gesprochene
+Frage gleichberechtigt sind.
 
 ## Phasen-Plan
 
@@ -100,7 +118,7 @@ npm start          # öffnet die Kugel
 | 2 | SQLite-Gedächtnis & Persönlichkeits-Tuning | ✅ |
 | 3 | Tools: Web-Suche, macOS-Steuerung, Aufgaben, System-Monitor | ✅ |
 | 4 | Visuelle Kugel (Electron + Three.js) | ✅ |
-| 5 | Vollständiges Dashboard | offen |
+| 5 | Vollständiges Dashboard | ✅ |
 | 6 | iPhone Web-Interface | offen |
 | 7 | 24/7-Betrieb (LaunchAgent) | offen |
 

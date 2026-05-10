@@ -44,8 +44,10 @@ function createDashboardWindow() {
     return;
   }
   dashboardWindow = new BrowserWindow({
-    width: 1100,
-    height: 720,
+    width: 1200,
+    height: 780,
+    minWidth: 980,
+    minHeight: 640,
     title: 'JARVIS Dashboard',
     backgroundColor: '#0a0e1a',
     webPreferences: { contextIsolation: true },

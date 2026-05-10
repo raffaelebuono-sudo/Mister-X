@@ -1,19 +1,19 @@
 """Zentrale Tool-Registry für Claude-Tool-Use.
 
-Bündelt alle JARVIS-Tools, liefert Anthropic-kompatible Schemas
-(`schemas()`) und führt Tool-Aufrufe aus (`dispatch()`).
-
-Ein neues Tool hinzufügen: Funktion oben implementieren, in `_TOOLS`
-unten eintragen – fertig.
+Wird vom `JarvisCore` mit einer Referenz auf sich selbst initialisiert,
+damit Tool-Aufrufe (z. B. `add_task`) zugleich die UI über den Event-Bus
+informieren können.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List
+from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 from tools import mac_control, system_monitor, web_search
-from tools.task_manager import TaskManager
+
+if TYPE_CHECKING:  # nur für Type-Checker, keine Laufzeit-Abhängigkeit
+    from core import JarvisCore
 
 
 @dataclass(frozen=True)
@@ -25,8 +25,8 @@ class _Tool:
 
 
 class ToolRegistry:
-    def __init__(self, tasks: TaskManager) -> None:
-        self._tasks = tasks
+    def __init__(self, core: "JarvisCore") -> None:
+        self._core = core
         self._tools: Dict[str, _Tool] = {t.name: t for t in self._build()}
 
     # --- Anthropic-Integration ---
@@ -55,6 +55,7 @@ class ToolRegistry:
     # --- Tool-Definitionen ---
 
     def _build(self) -> List[_Tool]:
+        core = self._core
         return [
             _Tool(
                 name="web_search",
@@ -66,15 +67,9 @@ class ToolRegistry:
                 input_schema={
                     "type": "object",
                     "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Die Suchanfrage in natürlicher Sprache.",
-                        },
+                        "query": {"type": "string", "description": "Die Suchanfrage."},
                         "max_results": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 10,
-                            "description": "Maximale Anzahl Ergebnisse (Standard 5).",
+                            "type": "integer", "minimum": 1, "maximum": 10,
                         },
                     },
                     "required": ["query"],
@@ -86,9 +81,7 @@ class ToolRegistry:
                 description="Öffnet eine macOS-App (z. B. Safari, Calendar, Mail).",
                 input_schema={
                     "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "description": "App-Name"},
-                    },
+                    "properties": {"name": {"type": "string"}},
                     "required": ["name"],
                 },
                 fn=lambda name: mac_control.open_app(name),
@@ -98,9 +91,7 @@ class ToolRegistry:
                 description="Öffnet eine URL im Standard-Browser.",
                 input_schema={
                     "type": "object",
-                    "properties": {
-                        "url": {"type": "string", "description": "URL inklusive https://"},
-                    },
+                    "properties": {"url": {"type": "string"}},
                     "required": ["url"],
                 },
                 fn=lambda url: mac_control.open_url(url),
@@ -110,9 +101,7 @@ class ToolRegistry:
                 description="Öffnet eine Datei mit der Standard-Anwendung.",
                 input_schema={
                     "type": "object",
-                    "properties": {
-                        "path": {"type": "string", "description": "Pfad zur Datei"},
-                    },
+                    "properties": {"path": {"type": "string"}},
                     "required": ["path"],
                 },
                 fn=lambda path: mac_control.open_file(path),
@@ -120,22 +109,18 @@ class ToolRegistry:
             _Tool(
                 name="add_task",
                 description=(
-                    "Legt eine Aufgabe oder Erinnerung an. Optional "
-                    "ein Fälligkeitsdatum als ISO-String (z. B. "
-                    "2026-05-12T18:00)."
+                    "Legt eine Aufgabe oder Erinnerung an. Optional ein "
+                    "Fälligkeitsdatum als ISO-String (z. B. 2026-05-12T18:00)."
                 ),
                 input_schema={
                     "type": "object",
                     "properties": {
-                        "title": {"type": "string", "description": "Worum geht es?"},
-                        "due_at": {
-                            "type": "string",
-                            "description": "Optional: Fälligkeit als ISO-Datum/Zeit.",
-                        },
+                        "title": {"type": "string"},
+                        "due_at": {"type": "string"},
                     },
                     "required": ["title"],
                 },
-                fn=lambda title, due_at=None: self._tasks.add(title, due_at),
+                fn=lambda title, due_at=None: core.add_task(title, due_at),
             ),
             _Tool(
                 name="list_tasks",
@@ -146,19 +131,17 @@ class ToolRegistry:
                         "limit": {"type": "integer", "minimum": 1, "maximum": 100},
                     },
                 },
-                fn=lambda limit=20: self._tasks.list_open(limit),
+                fn=lambda limit=20: core.list_open_tasks(),
             ),
             _Tool(
                 name="complete_task",
                 description="Markiert eine Aufgabe per ID als erledigt.",
                 input_schema={
                     "type": "object",
-                    "properties": {
-                        "task_id": {"type": "integer", "description": "Aufgaben-ID"},
-                    },
+                    "properties": {"task_id": {"type": "integer"}},
                     "required": ["task_id"],
                 },
-                fn=lambda task_id: self._tasks.complete(int(task_id)),
+                fn=lambda task_id: core.complete_task(int(task_id)),
             ),
             _Tool(
                 name="system_status",

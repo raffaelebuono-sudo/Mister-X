@@ -1,11 +1,15 @@
-"""Thread-sicherer Event-Bus für JARVIS-Zustände.
+"""Thread-sicherer Event-Bus für JARVIS-Events.
 
-Der Voice-Loop läuft synchron in `main.py`. Der WebSocket-Server läuft
-in einem Hintergrund-Thread auf einer eigenen Asyncio-Schleife. Diese
-Klasse vermittelt zwischen beiden:
+Der Voice-Loop ist sync, der WebSocket-Server async in einem eigenen
+Thread. Diese Klasse vermittelt zwischen beiden:
 
-  - `set_state()` ist sync und wird aus `main.py` aufgerufen.
-  - Verbundene WebSocket-Clients bekommen jede Änderung als JSON.
+  - Sync-Aufrufer (`set_state`, `push_chat`, `publish` usw.) lösen
+    einen Broadcast an alle WebSocket-Clients aus.
+  - Snapshots werden beim Auslösen eingefroren, damit kurze Übergänge
+    nicht überschrieben werden.
+
+Protokoll-Konvention: jede Nachricht hat ein `type`-Feld
+(`state`, `chat`, `tasks`, `history`, `system`).
 """
 
 from __future__ import annotations
@@ -13,7 +17,8 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
-from typing import Optional, Set
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Set
 
 from events.state import JarvisState
 
@@ -37,36 +42,58 @@ class EventBus:
     def unregister(self, client) -> None:
         self._clients.discard(client)
 
-    def snapshot(self) -> dict:
-        return {"state": self._state.value, "message": self._message}
+    def state_snapshot(self) -> Dict[str, Any]:
+        return {"type": "state", "state": self._state.value, "message": self._message}
 
-    # --- Vom Voice-Loop (sync) aufgerufen ---
+    # --- Sync-API für den Voice-Loop und den Core ---
+
+    def publish(self, payload: Dict[str, Any]) -> None:
+        """Generischer Broadcast eines bereits strukturierten Events."""
+        text = json.dumps(payload, ensure_ascii=False)
+        loop = self._loop
+        if loop is None or not self._clients:
+            return
+        try:
+            asyncio.run_coroutine_threadsafe(self._broadcast(text), loop)
+        except RuntimeError:
+            # Loop läuft nicht mehr – Voice-Loop nicht hart fail lassen.
+            pass
 
     def set_state(self, state: JarvisState, message: Optional[str] = None) -> None:
         with self._lock:
             self._state = state
             self._message = message
-        # Snapshot zum Auslöse-Zeitpunkt einfrieren, damit kurze
-        # Übergänge (z. B. SUCCESS) nicht beim Broadcast überschrieben werden.
-        payload = json.dumps({"state": state.value, "message": message})
+        self.publish({"type": "state", "state": state.value, "message": message})
 
-        loop = self._loop
-        if loop is None or not self._clients:
-            return
-        try:
-            asyncio.run_coroutine_threadsafe(self._broadcast(payload), loop)
-        except RuntimeError:
-            # Loop läuft nicht mehr – ignorieren, kein Hard-Fail im Voice-Loop.
-            pass
+    def push_chat(self, role: str, content: str) -> None:
+        self.publish({
+            "type": "chat",
+            "role": role,
+            "content": content,
+            "ts": _now_iso(),
+        })
+
+    def push_tasks(self, tasks: List[dict]) -> None:
+        self.publish({"type": "tasks", "tasks": tasks})
+
+    def push_history(self, messages: List[dict]) -> None:
+        self.publish({"type": "history", "messages": messages})
+
+    def push_system(self, stats: Dict[str, Any]) -> None:
+        self.publish({"type": "system", "stats": stats})
 
     # --- Intern ---
 
-    async def _broadcast(self, payload: str) -> None:
+    async def _broadcast(self, text: str) -> None:
         dead = []
         for client in list(self._clients):
             try:
-                await client.send(payload)
+                await client.send(text)
             except Exception:
                 dead.append(client)
         for c in dead:
             self.unregister(c)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")

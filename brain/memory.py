@@ -73,6 +73,19 @@ class Memory:
         rows.reverse()
         return [{"role": role, "content": content} for role, content in rows]
 
+    def recent_with_ts(self, limit: int = 50) -> List[dict]:
+        """Wie `recent_messages`, aber inkl. Zeitstempel – für die UI."""
+        cursor = self._conn.execute(
+            "SELECT role, content, ts FROM messages ORDER BY id DESC LIMIT ?",
+            (limit,),
+        )
+        rows = cursor.fetchall()
+        rows.reverse()
+        return [
+            {"role": role, "content": content, "ts": ts}
+            for role, content, ts in rows
+        ]
+
     def count(self) -> int:
         cursor = self._conn.execute("SELECT COUNT(*) FROM messages")
         (n,) = cursor.fetchone()

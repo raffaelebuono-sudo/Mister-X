@@ -94,7 +94,10 @@ function connect() {
   ws.onmessage = (e) => {
     try {
       const data = JSON.parse(e.data);
-      if (data && data.state) setState(data.state);
+      // Nur State-Events interessieren die Kugel; alles andere ignorieren.
+      if (data && (!data.type || data.type === 'state') && data.state) {
+        setState(data.state);
+      }
     } catch { /* ignorieren */ }
   };
   ws.onclose = () => setTimeout(connect, 1500);
