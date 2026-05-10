@@ -71,6 +71,11 @@ class Config:
     computer_use_max_steps: int = 30
     computer_use_max_tokens: int = 2048
 
+    # --- Langzeitgedächtnis: Auto-Extraktion von Fakten ---
+    # Haiku ist deutlich billiger als Sonnet (~5×) und reicht völlig,
+    # um Fakten aus einem Gesprächs-Turn zu extrahieren.
+    profile_extractor_model: str = "claude-haiku-4-5-20251001"
+
     @classmethod
     def from_env(cls) -> "Config":
         api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()

@@ -192,6 +192,73 @@ class ToolRegistry:
                 ),
             ),
             _Tool(
+                name="remember",
+                description=(
+                    "Speichert einen dauerhaften Fakt über den Benutzer im "
+                    "Langzeitgedächtnis. Nutze dies, wenn der Benutzer dir "
+                    "etwas Persönliches mitteilt, das in Zukunft relevant "
+                    "bleibt: Name, Wohnort, Vorlieben, Beziehungen, Projekte, "
+                    "Routinen, Gesundheits-Infos. Kategorie wählen aus: "
+                    "identitaet, vorlieben, beziehungen, projekte, routinen, "
+                    "ziele, gesundheit, sonstiges."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "content": {
+                            "type": "string",
+                            "description": "Kurzer Satz mit dem Fakt.",
+                        },
+                        "category": {
+                            "type": "string",
+                            "enum": [
+                                "identitaet", "vorlieben", "beziehungen",
+                                "projekte", "routinen", "ziele", "gesundheit",
+                                "sonstiges",
+                            ],
+                        },
+                    },
+                    "required": ["content"],
+                },
+                fn=lambda content, category="sonstiges": core.remember_fact(
+                    content, category,
+                ),
+            ),
+            _Tool(
+                name="list_facts",
+                description=(
+                    "Listet alle (oder einer Kategorie) Fakten, die JARVIS "
+                    "über den Benutzer gespeichert hat."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "category": {
+                            "type": "string",
+                            "description": "Optional: nur diese Kategorie.",
+                        },
+                    },
+                },
+                fn=lambda category=None: core.list_facts(category),
+            ),
+            _Tool(
+                name="forget_fact",
+                description=(
+                    "Löscht einen Fakt aus dem Langzeitgedächtnis. Entweder "
+                    "nach exakter ID oder nach einem Stichwort im Inhalt."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "fact_id": {"type": "integer"},
+                        "content_substr": {"type": "string"},
+                    },
+                },
+                fn=lambda fact_id=None, content_substr=None: core.forget_fact(
+                    fact_id, content_substr,
+                ),
+            ),
+            _Tool(
                 name="computer_use",
                 description=(
                     "Steuert den Mac direkt, um eine Aufgabe auszuführen "

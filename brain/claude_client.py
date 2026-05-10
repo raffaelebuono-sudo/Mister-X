@@ -18,6 +18,7 @@ from anthropic import Anthropic
 from anthropic.types import MessageParam
 
 from brain.memory import Memory
+from brain.profile import UserProfile
 from brain.system_prompt import SYSTEM_PROMPT
 from config import get_config
 from tools.registry import ToolRegistry
@@ -31,6 +32,7 @@ class ClaudeClient:
         self,
         memory: Memory | None = None,
         tools: ToolRegistry | None = None,
+        profile: UserProfile | None = None,
     ) -> None:
         cfg = get_config()
         self._client = Anthropic(api_key=cfg.anthropic_api_key)
@@ -39,6 +41,7 @@ class ClaudeClient:
         self._memory = memory if memory is not None else Memory(cfg.db_path)
         self._memory_pairs = cfg.memory_pairs
         self._tools = tools
+        self._profile = profile
 
     def ask(self, user_text: str) -> str:
         history: List[MessageParam] = self._memory.recent_messages(self._memory_pairs)
@@ -104,7 +107,12 @@ class ClaudeClient:
 
     def _build_system_prompt(self) -> str:
         now = datetime.now().strftime("%A, %d.%m.%Y, %H:%M")
-        return f"{SYSTEM_PROMPT}\n\nAktuelle Zeit: {now}\n"
+        parts = [SYSTEM_PROMPT, f"\nAktuelle Zeit: {now}\n"]
+        if self._profile is not None:
+            profile_text = self._profile.to_prompt_text()
+            if profile_text:
+                parts.append("\n" + profile_text + "\n")
+        return "\n".join(parts)
 
     def close(self) -> None:
         self._memory.close()

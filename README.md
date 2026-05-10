@@ -150,6 +150,35 @@ nicht will, setzt `web_host = "127.0.0.1"` in `config.py`.
 | 7 | 24/7-Betrieb (LaunchAgent), Logging, Polishing | ✅ |
 | 8 | Friday-Mode: Hintergrund-Agenten, Scheduler, Briefings | ✅ |
 | 9 | Computer Use: Claude steuert den Mac direkt | ✅ |
+| 10 | Langzeitgedächtnis: JARVIS lernt dich kennen | ✅ |
+
+## Langzeitgedächtnis (Phase 10)
+
+JARVIS merkt sich dauerhaft, was er über dich weiß: Name, Wohnort,
+Vorlieben, Beziehungen, Projekte, Routinen, Ziele, Gesundheit. Diese
+Fakten werden bei JEDEM Gespräch in den System-Prompt eingehängt –
+JARVIS „erinnert sich an alles", auch über Sitzungen und Tage hinweg.
+
+**Wie es funktioniert:**
+
+1. **Automatische Extraktion**: Nach jedem Gespräch läuft im Hintergrund
+   ein Claude-Haiku-Aufruf (deutlich billiger als Sonnet), der das Gespräch
+   nach neuen dauerhaften Fakten durchsucht und sie in `data/jarvis.db`
+   speichert.
+
+2. **Explizit per Sprache**: *„Jarvis, merk dir: ich wohne in Wien"* →
+   er ruft das `remember`-Tool auf und legt es ab.
+
+3. **Abrufen**: *„Was weißt du über mich?"* → `list_facts`-Tool.
+
+4. **Vergessen**: *„Jarvis, vergiss dass ich in Wien wohne"* → `forget_fact`.
+
+**Kategorien:** `identitaet`, `vorlieben`, `beziehungen`, `projekte`,
+`routinen`, `ziele`, `gesundheit`, `sonstiges`.
+
+**Datenspeicher**: alles lokal in `data/jarvis.db` (in `.gitignore`).
+Du behältst die volle Kontrolle, kannst Fakten jederzeit vergessen oder
+die Datei komplett löschen.
 
 ## Computer Use – Claude steuert den Mac (Phase 9)
 

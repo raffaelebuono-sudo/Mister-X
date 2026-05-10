@@ -18,6 +18,7 @@ from agents.scheduler import Scheduler
 from agents.store import BriefingsStore
 from brain.claude_client import ClaudeClient
 from brain.memory import Memory
+from brain.profile import UserProfile
 from config import Config
 from events.bus import EventBus
 from events.state import JarvisState
@@ -34,11 +35,14 @@ class JarvisCore:
         self.memory = Memory(cfg.db_path)
         self.tasks = TaskManager(cfg.db_path)
         self.briefings = BriefingsStore(cfg.db_path)
+        self.profile = UserProfile(cfg.db_path)
 
         # Registry erfährt den Core, damit Tool-Aufrufe (z. B. add_task,
         # run_agent, list_briefings) die Dashboards informieren können.
         self.tools = ToolRegistry(self)
-        self.brain = ClaudeClient(memory=self.memory, tools=self.tools)
+        self.brain = ClaudeClient(
+            memory=self.memory, tools=self.tools, profile=self.profile,
+        )
         self.listener = Listener()
         self.speaker = Speaker()
         self._lock = threading.Lock()
@@ -72,7 +76,105 @@ class JarvisCore:
         if speak:
             self.bus.set_state(JarvisState.SPEAKING, reply)
             self.speaker.say(reply)
+
+        # Im Hintergrund Fakten über den Benutzer extrahieren (Haiku, billig).
+        threading.Thread(
+            target=self._extract_facts_async,
+            args=(text, reply),
+            daemon=True,
+        ).start()
         return reply
+
+    # --- Langzeitgedächtnis ---
+
+    def remember_fact(self, content: str, category: str = "sonstiges") -> str:
+        new_id = self.profile.add(content, category)
+        if new_id is None:
+            return f"War mir bereits bekannt: {content}"
+        return f"Gemerkt ({category}, ID {new_id}): {content}"
+
+    def list_facts(self, category: str | None = None) -> str:
+        facts = (self.profile.by_category(category) if category
+                 else self.profile.all_facts())
+        if not facts:
+            return "Ich habe noch nichts Persönliches über dich gespeichert."
+        if category:
+            lines = [f"  {f['id']}. {f['content']}" for f in facts]
+            return f"Was ich über dich weiß ({category}):\n" + "\n".join(lines)
+        # Nach Kategorie gruppiert
+        from brain.profile import LABELS
+        from itertools import groupby
+        out = ["Was ich über dich weiß:"]
+        for cat, group in groupby(facts, key=lambda f: f["category"]):
+            out.append(f"\n{LABELS.get(cat, cat)}:")
+            for f in group:
+                out.append(f"  {f['id']}. {f['content']}")
+        return "\n".join(out)
+
+    def forget_fact(self, fact_id: int | None = None,
+                    content_substr: str | None = None) -> str:
+        if fact_id is not None:
+            return ("Vergessen." if self.profile.remove(int(fact_id))
+                    else f"Kein Fakt mit ID {fact_id} gefunden.")
+        if content_substr:
+            n = self.profile.remove_by_content(content_substr)
+            return f"{n} passende Fakten vergessen."
+        return "Bitte fact_id oder content_substr angeben."
+
+    def _extract_facts_async(self, user_text: str, reply: str) -> None:
+        """Lässt Haiku im Hintergrund neue Fakten aus dem Gespräch extrahieren."""
+        import json
+        import re
+        try:
+            from anthropic import Anthropic
+            client = Anthropic(api_key=self.cfg.anthropic_api_key)
+            extractor_prompt = (
+                "Hier ein kurzer Gesprächsausschnitt:\n\n"
+                f"Benutzer: {user_text}\n"
+                f"JARVIS: {reply}\n\n"
+                "Extrahiere NEUE, dauerhafte Fakten über den BENUTZER. "
+                "Nur Sachen, die länger als einen Tag relevant bleiben: "
+                "Name, Wohnort, Beruf, Vorlieben, Beziehungen, Routinen, "
+                "Gesundheit, laufende Projekte, Ziele.\n\n"
+                "NICHT extrahieren: temporäre Anfragen, einmalige Aktionen, "
+                "Floskeln, Wetterfragen, JARVIS' eigene Antworten.\n\n"
+                "Antworte als JSON-Array. Erlaubte Kategorien: identitaet, "
+                "vorlieben, beziehungen, projekte, routinen, ziele, "
+                "gesundheit, sonstiges. Format:\n"
+                '[{"category": "...", "content": "Kurzer Fakt-Satz"}]\n\n'
+                "Wenn nichts Neues: leeres Array []. Antworte NUR mit JSON, "
+                "ohne Markdown, ohne Erklärung."
+            )
+            response = client.messages.create(
+                model=self.cfg.profile_extractor_model,
+                max_tokens=512,
+                messages=[{"role": "user", "content": extractor_prompt}],
+            )
+            raw = "".join(
+                b.text for b in response.content if b.type == "text"
+            ).strip()
+            # Falls Markdown-Code-Fences trotzdem drin sind, entfernen.
+            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+            raw = re.sub(r"\s*```$", "", raw)
+            try:
+                items = json.loads(raw)
+            except json.JSONDecodeError:
+                return
+            if not isinstance(items, list):
+                return
+            added = 0
+            for f in items:
+                if not isinstance(f, dict):
+                    continue
+                content = (f.get("content") or "").strip()
+                category = (f.get("category") or "sonstiges").strip()
+                if content and self.profile.add(content, category) is not None:
+                    added += 1
+            if added:
+                print(f"[Profile] {added} neue Fakt(en) über dich gespeichert.")
+        except Exception:
+            # Stilles Fail – Profile-Extraktion darf den Voice-Loop nie stören.
+            pass
 
     # --- Aufgaben (mit Event-Push) ---
 
@@ -193,3 +295,4 @@ class JarvisCore:
         self.brain.close()
         self.tasks.close()
         self.briefings.close()
+        self.profile.close()
