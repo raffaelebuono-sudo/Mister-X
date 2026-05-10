@@ -59,7 +59,8 @@ const clock = new THREE.Clock();
 function tick() {
   const dt = clock.getDelta();
   const t = clock.getElapsedTime();
-  const k = Math.min(1, dt * 4);
+  // Schnellere Übergänge, damit kurze Zustände wie SPEAKING (Ja?) sichtbar werden.
+  const k = Math.min(1, dt * 10);
 
   animated.color.lerp(new THREE.Color(target.color), k);
   animated.accent.lerp(new THREE.Color(target.accent), k);

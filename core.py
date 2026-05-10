@@ -63,7 +63,6 @@ class JarvisCore:
         if speak:
             self.bus.set_state(JarvisState.SPEAKING, reply)
             self.speaker.say(reply)
-        self.bus.set_state(JarvisState.SUCCESS)
         return reply
 
     # --- Aufgaben (mit Event-Push) ---
