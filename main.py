@@ -10,8 +10,12 @@ Anfragen gehen den gleichen Weg.
 
 from __future__ import annotations
 
+import os
+import signal
+import subprocess
 import sys
 import threading
+from pathlib import Path
 
 import logger as jarvis_logger
 from config import get_config
@@ -20,6 +24,9 @@ from dashboard.web_server.server import WebServer
 from events.state import JarvisState
 from tools import system_monitor
 from voice.wake_word import WakeWordDetector
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+ORB_DIR = PROJECT_ROOT / "dashboard" / "mac_app"
 
 
 BANNER = r"""
@@ -55,6 +62,9 @@ def main() -> int:
     web = WebServer(core, host=cfg.web_host, port=cfg.web_port)
     web.start()
 
+    # Schwebende Kugel automatisch mitstarten
+    orb_proc = _start_orb(log) if cfg.auto_start_orb else None
+
     stop_flag = threading.Event()
     monitor = threading.Thread(
         target=_system_monitor_loop, args=(core, stop_flag), daemon=True,
@@ -84,6 +94,7 @@ def main() -> int:
         return 0
     finally:
         stop_flag.set()
+        _stop_orb(orb_proc, log)
         try: web.stop()
         except Exception: pass
         try: core.shutdown()
@@ -159,6 +170,48 @@ def _log_chunk(text: str) -> None:
     if text:
         # Nur ausgeben, wenn überhaupt etwas verstanden wurde.
         print(f"  ... gehört: {text!r}")
+
+
+def _start_orb(log) -> subprocess.Popen | None:
+    """Startet die schwebende Kugel (Electron) als Hintergrundprozess.
+
+    Wenn Electron oder die Abhängigkeiten fehlen, wird nur eine Warnung
+    geloggt – JARVIS startet trotzdem.
+    """
+    electron = ORB_DIR / "node_modules" / ".bin" / "electron"
+    if not electron.exists():
+        log.warning(
+            "Kugel nicht gestartet: Electron fehlt. "
+            "Installation: cd dashboard/mac_app && npm install"
+        )
+        return None
+    try:
+        proc = subprocess.Popen(
+            [str(electron), "."],
+            cwd=str(ORB_DIR),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        log.info("Kugel gestartet (PID %d).", proc.pid)
+        print("[Kugel] gestartet.")
+        return proc
+    except Exception as exc:
+        log.warning("Kugel konnte nicht gestartet werden: %s", exc)
+        return None
+
+
+def _stop_orb(proc: subprocess.Popen | None, log) -> None:
+    """Beendet die Kugel sauber, inklusive eventueller Kindprozesse."""
+    if proc is None or proc.poll() is not None:
+        return
+    try:
+        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        proc.wait(timeout=5)
+    except Exception:
+        try: proc.kill()
+        except Exception: pass
+    log.info("Kugel beendet.")
 
 
 if __name__ == "__main__":

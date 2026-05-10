@@ -58,6 +58,10 @@ class Config:
     web_host: str = "0.0.0.0"
     web_port: int = 8080
 
+    # --- Electron-Kugel ---
+    # Wenn True, wird die schwebende Kugel automatisch beim Start mitgestartet.
+    auto_start_orb: bool = True
+
     @classmethod
     def from_env(cls) -> "Config":
         api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
