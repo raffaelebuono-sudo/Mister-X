@@ -1,19 +1,19 @@
 """JARVIS – Hauptprogramm.
 
-Startet den `JarvisCore`, den WebSocket-Server für Kugel und Dashboard,
+Startet den `JarvisCore`, den FastAPI-Server (Kugel/Dashboard/iPhone),
 einen Hintergrund-Thread, der periodisch den System-Status pusht, und
 den eigentlichen Voice-Loop.
 
-Voice und Text (Dashboard) teilen sich denselben Core – eine getippte
-Frage und eine gesprochene Frage gehen den gleichen Weg.
+Voice und Text teilen sich denselben Core – getippte und gesprochene
+Anfragen gehen den gleichen Weg.
 """
 
 from __future__ import annotations
 
 import sys
 import threading
-import time
 
+import logger as jarvis_logger
 from config import get_config
 from core import JarvisCore
 from dashboard.web_server.server import WebServer
@@ -29,21 +29,29 @@ BANNER = r"""
  _|  / ___ \ |  \  /    _| |_____)|
 (__)/_/   \_\_|  \/    |_____|____/
 
-       Phase 6 – Sprache + Dashboard + iPhone Web
+       Phase 7 – Sprache, Dashboard, iPhone, Autostart
 """
 
-SYSTEM_STATS_INTERVAL = 2.0  # Sekunden zwischen System-Pushes
+SYSTEM_STATS_INTERVAL = 2.0
 
 
 def main() -> int:
     print(BANNER)
+    log = jarvis_logger.setup()
+    log.info("JARVIS startet …")
+
     try:
         cfg = get_config()
     except RuntimeError as exc:
-        print(f"Konfigurations-Fehler: {exc}")
+        log.error("Konfigurations-Fehler: %s", exc)
         return 1
 
-    core = JarvisCore(cfg)
+    try:
+        core = JarvisCore(cfg)
+    except Exception as exc:
+        log.exception("Initialisierung von JarvisCore fehlgeschlagen: %s", exc)
+        return 1
+
     web = WebServer(core, host=cfg.web_host, port=cfg.web_port)
     web.start()
 
@@ -55,56 +63,72 @@ def main() -> int:
 
     wake = WakeWordDetector(core.listener)
 
+    log.info("Bereit. Wake-Phrase: '%s'", cfg.wake_phrase)
     print(f"[JARVIS] Bereit. Wartet auf Wake-Phrase: '{cfg.wake_phrase}'.")
     print("[JARVIS] Mit Strg+C beenden.")
     core.bus.set_state(JarvisState.SLEEPING)
 
     try:
         while True:
-            core.bus.set_state(JarvisState.SLEEPING)
-            wake.wait_for_wake(on_chunk=_log_chunk)
-            print("[JARVIS] Wake-Phrase erkannt.")
-
-            core.bus.set_state(JarvisState.SPEAKING, "Guten Morgen.")
-            core.speaker.say("Guten Morgen. Wie kann ich helfen?")
-
-            core.bus.set_state(JarvisState.LISTENING)
-            command = core.listener.listen_and_transcribe(cfg.command_seconds).strip()
-            if not command:
-                core.bus.set_state(JarvisState.SPEAKING)
-                core.speaker.say("Ich habe nichts gehört.")
-                continue
-
-            print(f"[Du] {command}")
             try:
-                reply = core.process_text(command, speak=True)
+                _voice_iteration(cfg, core, wake, log)
+            except KeyboardInterrupt:
+                raise
             except Exception as exc:
-                print(f"[JARVIS] Fehler: {exc}")
-                core.speaker.say("Es gab ein Problem mit der Anfrage.")
-                continue
-
-            print(f"[JARVIS] {reply}")
+                # Eine fehlerhafte Iteration darf JARVIS nicht abstürzen lassen.
+                log.exception("Fehler im Voice-Loop: %s", exc)
+                core.bus.set_state(JarvisState.ERROR, str(exc))
     except KeyboardInterrupt:
+        log.info("Beende JARVIS …")
         print("\n[JARVIS] Bis später.")
         return 0
     finally:
         stop_flag.set()
-        web.stop()
-        core.shutdown()
+        try: web.stop()
+        except Exception: pass
+        try: core.shutdown()
+        except Exception: pass
+
+
+def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None:
+    core.bus.set_state(JarvisState.SLEEPING)
+    wake.wait_for_wake(on_chunk=_log_chunk)
+    log.info("Wake-Phrase erkannt.")
+
+    core.bus.set_state(JarvisState.SPEAKING, "Guten Morgen.")
+    core.speaker.say("Guten Morgen. Wie kann ich helfen?")
+
+    core.bus.set_state(JarvisState.LISTENING)
+    command = core.listener.listen_and_transcribe(cfg.command_seconds).strip()
+    if not command:
+        core.bus.set_state(JarvisState.SPEAKING)
+        core.speaker.say("Ich habe nichts gehört.")
+        return
+
+    log.info("Anfrage: %s", command)
+    print(f"[Du] {command}")
+    try:
+        reply = core.process_text(command, speak=True)
+        log.info("Antwort: %s", reply)
+        print(f"[JARVIS] {reply}")
+    except Exception as exc:
+        log.exception("Verarbeitung fehlgeschlagen: %s", exc)
+        core.speaker.say("Es gab ein Problem mit der Anfrage.")
 
 
 def _system_monitor_loop(core: JarvisCore, stop_flag: threading.Event) -> None:
-    """Pusht alle paar Sekunden den System-Status an verbundene Clients."""
+    log = jarvis_logger.get("monitor")
     while not stop_flag.wait(SYSTEM_STATS_INTERVAL):
         try:
             core.bus.push_system(system_monitor.get_status())
-        except Exception:
+        except Exception as exc:
             # System-Monitor sollte den Voice-Loop nie hart fail lassen.
-            pass
+            log.warning("System-Monitor-Fehler: %s", exc)
 
 
 def _log_chunk(text: str) -> None:
     if text:
+        # Nur ausgeben, wenn überhaupt etwas verstanden wurde.
         print(f"  ... gehört: {text!r}")
 
 

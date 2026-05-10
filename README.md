@@ -1,45 +1,51 @@
 # JARVIS – Persönlicher KI-Assistent
 
-Persönlicher KI-Assistent auf Deutsch, läuft auf macOS.
-
-> Aktueller Stand: **Phase 1 – Sprachkern**. Spricht und versteht Deutsch,
-> reagiert auf die Wake-Phrase „Guten Morgen JARVIS" und antwortet über
-> Claude. UI, Dashboard, Kugel und iPhone-Zugriff folgen in späteren Phasen.
+Persönlicher KI-Assistent auf Deutsch, läuft auf macOS. Spricht und
+versteht Deutsch (Whisper + ElevenLabs/`say`), erinnert sich an
+vergangene Gespräche (SQLite), kann Tools aufrufen (Web-Suche,
+macOS-Steuerung, Aufgaben, System-Status), zeigt eine schwebende
+Three.js-Kugel über allen Fenstern, hat ein vollständiges Dashboard
+sowie ein mobiles Web-Interface fürs iPhone.
 
 ## Voraussetzungen
 
-- macOS (für `say`-Sprachausgabe und später für die Mac-App)
+- macOS (für `say`-Sprachausgabe und die Mac-App)
 - Python 3.11 oder neuer
-- `ffmpeg` (von Whisper benötigt) – Installation: `brew install ffmpeg`
+- `ffmpeg` (von Whisper benötigt): `brew install ffmpeg`
+- Node.js + npm (für Kugel/Dashboard): `brew install node`
 - Funktionierendes Mikrofon
 - Anthropic-API-Key
 
-## Installation
+## Schnellstart
 
 ```bash
-# 1. Virtuelle Umgebung erstellen
-python3 -m venv .venv
+./setup.sh
+# Dann .env öffnen und ANTHROPIC_API_KEY eintragen
 source .venv/bin/activate
-
-# 2. Abhängigkeiten installieren
-pip install -r requirements.txt
-
-# 3. Konfiguration
-cp .env.example .env
-# .env öffnen und ANTHROPIC_API_KEY eintragen
+python main.py
 ```
 
-## Starten
+In einem zweiten Terminal die Kugel starten:
 
 ```bash
-python main.py
+cd dashboard/mac_app && npm start
 ```
 
 Beim ersten Start lädt Whisper das Modell (`base`, ~150 MB) herunter.
 Danach wartet JARVIS auf die Wake-Phrase **„Guten Morgen JARVIS"** und
-antwortet auf die folgende Frage.
+antwortet auf die folgende Frage. Mit `Strg+C` beenden.
 
-Mit `Strg+C` beenden.
+## Manuelle Installation
+
+```bash
+brew install ffmpeg node
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # ANTHROPIC_API_KEY eintragen
+cd dashboard/mac_app && npm install && cd ../..
+python main.py
+```
 
 ## Projektstruktur (Phase 1)
 
@@ -90,7 +96,7 @@ npm start          # öffnet die Kugel
 
 - **Verschieben**: Kugel mit gedrückter Maustaste ziehen.
 - **Klick**: öffnet das Dashboard-Fenster.
-- WebSocket-Endpunkt: `ws://127.0.0.1:8765` (in `config.py` änderbar).
+- WebSocket-Endpunkt: `ws://127.0.0.1:8080/ws` (Port in `config.py`).
 
 ## Dashboard (Phase 5)
 
@@ -141,7 +147,24 @@ nicht will, setzt `web_host = "127.0.0.1"` in `config.py`.
 | 4 | Visuelle Kugel (Electron + Three.js) | ✅ |
 | 5 | Vollständiges Dashboard | ✅ |
 | 6 | iPhone Web-Interface | ✅ |
-| 7 | 24/7-Betrieb (LaunchAgent) | offen |
+| 7 | 24/7-Betrieb (LaunchAgent), Logging, Polishing | ✅ |
+
+## Autostart (Phase 7)
+
+JARVIS kann beim Login automatisch im Hintergrund starten:
+
+```bash
+./daemon/install.sh        # legt ~/Library/LaunchAgents/com.jarvis.assistant.plist an
+launchctl list | grep jarvis    # Status prüfen
+./daemon/uninstall.sh      # wieder entfernen
+```
+
+Logs landen in `data/logs/`:
+
+| Datei | Inhalt |
+|-------|--------|
+| `jarvis.log` (rotierend, 5 MB × 3) | Anwendungs-Log |
+| `launchd.out.log` / `launchd.err.log` | stdout/stderr aus LaunchAgent |
 
 ## Hinweise
 
@@ -150,3 +173,6 @@ nicht will, setzt `web_host = "127.0.0.1"` in `config.py`.
   macOS-Stimme „Anna" über den `say`-Befehl.
 - **Whisper-Modell**: In `config.py` steht `whisper_model = "base"`.
   Für bessere Qualität auf `small` oder `medium` setzen – aber langsamer.
+- **Mikrofon-Berechtigung**: macOS fragt beim ersten Start nach Mikrofon-
+  Zugriff. Im LaunchAgent-Modus muss diese Berechtigung manuell unter
+  *Systemeinstellungen → Datenschutz → Mikrofon* erteilt werden.
