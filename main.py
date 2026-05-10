@@ -120,8 +120,26 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
     # Dashboard sofort nach vorne holen
     core.bus.push_activate(source)
 
-    core.bus.set_state(JarvisState.SPEAKING, "Ja?")
-    core.speaker.say("Ja, wie kann ich helfen?")
+    # Bei Klatschen: kein "Ja?" – stattdessen direkt das Welcome-Briefing
+    # (Zeit, Wetter, System, ungelesene Briefings, offene Aufgaben).
+    if source == "clap":
+        core.bus.set_state(JarvisState.THINKING, "Welcome-Briefing …")
+        try:
+            briefing_text = core.run_agent(
+                "welcome_briefing",
+                "Erstelle das Sofort-Briefing für den Benutzer.",
+            )
+        except Exception as exc:
+            log.exception("Welcome-Briefing fehlgeschlagen: %s", exc)
+            briefing_text = "Ich bin da."
+        core.bus.set_state(JarvisState.SPEAKING, briefing_text[:80])
+        core.bus.push_brain("speech_start", briefing_text,
+                            meta={"chars": len(briefing_text)})
+        core.speaker.say(briefing_text)
+        core.bus.push_brain("speech_end", "")
+    else:
+        core.bus.set_state(JarvisState.SPEAKING, "Ja?")
+        core.speaker.say("Ja, wie kann ich helfen?")
 
     while True:
         core.bus.set_state(JarvisState.LISTENING)

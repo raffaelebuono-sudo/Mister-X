@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
-from tools import mac_control, system_monitor, web_search
+from tools import mac_control, system_inspect, system_monitor, web_search
 
 if TYPE_CHECKING:  # nur für Type-Checker, keine Laufzeit-Abhängigkeit
     from core import JarvisCore
@@ -151,6 +151,60 @@ class ToolRegistry:
                 ),
                 input_schema={"type": "object", "properties": {}},
                 fn=lambda: system_monitor.get_status_text(),
+            ),
+            _Tool(
+                name="top_processes",
+                description=(
+                    "Liefert die Top-Prozesse auf dem Mac nach CPU- oder "
+                    "RAM-Verbrauch (read-only). Nutzbar für Security-Agenten "
+                    "oder Performance-Diagnose."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 50},
+                        "sort_by": {"type": "string", "enum": ["cpu", "ram"]},
+                    },
+                },
+                fn=lambda limit=10, sort_by="cpu": system_inspect.top_processes(limit, sort_by),
+            ),
+            _Tool(
+                name="network_connections",
+                description=(
+                    "Listet aktive ein- und ausgehende Netzwerkverbindungen "
+                    "(welche Apps reden gerade mit welchen Servern). "
+                    "Wichtig für Sicherheits-Audits."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 50},
+                    },
+                },
+                fn=lambda limit=15: system_inspect.network_connections(limit),
+            ),
+            _Tool(
+                name="listening_ports",
+                description=(
+                    "Welche Programme lauschen auf welchen Ports. Wichtig "
+                    "um zu erkennen, ob etwas Verdächtiges einen Port offen hat."
+                ),
+                input_schema={"type": "object", "properties": {}},
+                fn=lambda: system_inspect.listening_ports(),
+            ),
+            _Tool(
+                name="recent_logins",
+                description=(
+                    "Liefert die letzten Logins auf dem Mac (über 'last'). "
+                    "Hilfreich für Security-Audits."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 50},
+                    },
+                },
+                fn=lambda limit=10: system_inspect.recent_logins(limit),
             ),
             _Tool(
                 name="run_agent",
