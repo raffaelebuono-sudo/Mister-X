@@ -1,13 +1,14 @@
 """JARVIS – Hauptprogramm.
 
 Ablauf:
-  1. Whisper, Speaker, Tools und Claude initialisieren
-  2. Auf Wake-Phrase „Guten Morgen JARVIS" warten
-  3. Begrüßen, Frage aufnehmen, an Claude schicken
-     (Claude darf Tools wie Web-Suche oder System-Status nutzen)
-  4. Antwort aussprechen, dann zurück zu Schritt 2
+  1. Whisper, Speaker, Tools, Claude und WebSocket-Server initialisieren
+  2. Auf Wake-Phrase „Guten Morgen JARVIS" warten (State: SLEEPING)
+  3. Begrüßen, Frage aufnehmen (LISTENING),
+     an Claude schicken (THINKING), Antwort aussprechen (SPEAKING)
+  4. Zurück zu Schritt 2
 
-Läuft im Terminal – UI, Kugel und Web-Server folgen in Phase 4–6.
+Der WebSocket-Server pusht jeden State-Wechsel an verbundene Clients
+(Electron-Kugel, Web-Dashboard).
 """
 
 from __future__ import annotations
@@ -17,6 +18,9 @@ import sys
 from brain.claude_client import ClaudeClient
 from brain.memory import Memory
 from config import get_config
+from dashboard.web_server.ws_server import WSServer
+from events.bus import EventBus
+from events.state import JarvisState
 from tools.registry import ToolRegistry
 from tools.task_manager import TaskManager
 from voice.listener import Listener
@@ -31,7 +35,7 @@ BANNER = r"""
  _|  / ___ \ |  \  /    _| |_____)|
 (__)/_/   \_\_|  \/    |_____|____/
 
-       Phase 3 – Sprache + Gedächtnis + Tools
+       Phase 4 – Sprache + Gedächtnis + Tools + Kugel
 """
 
 
@@ -51,34 +55,49 @@ def main() -> int:
     brain = ClaudeClient(memory=memory, tools=tools)
     wake = WakeWordDetector(listener)
 
+    bus = EventBus()
+    ws = WSServer(bus, host=cfg.ws_host, port=cfg.ws_port)
+    ws.start()
+
     print(f"[JARVIS] Bereit. Wartet auf Wake-Phrase: '{cfg.wake_phrase}'.")
     print("[JARVIS] Mit Strg+C beenden.")
+    bus.set_state(JarvisState.SLEEPING)
 
     try:
         while True:
+            bus.set_state(JarvisState.SLEEPING)
             wake.wait_for_wake(on_chunk=_log_chunk)
             print("[JARVIS] Wake-Phrase erkannt.")
+
+            bus.set_state(JarvisState.SPEAKING, "Guten Morgen.")
             speaker.say("Guten Morgen. Wie kann ich helfen?")
 
+            bus.set_state(JarvisState.LISTENING)
             command = listener.listen_and_transcribe(cfg.command_seconds).strip()
             if not command:
+                bus.set_state(JarvisState.SPEAKING)
                 speaker.say("Ich habe nichts gehört.")
                 continue
 
             print(f"[Du] {command}")
+            bus.set_state(JarvisState.THINKING)
             try:
                 reply = brain.ask(command)
             except Exception as exc:
                 print(f"[JARVIS] Claude-Fehler: {exc}")
+                bus.set_state(JarvisState.ERROR, str(exc))
                 speaker.say("Es gab ein Problem mit der Anfrage.")
                 continue
 
             print(f"[JARVIS] {reply}")
+            bus.set_state(JarvisState.SPEAKING, reply)
             speaker.say(reply)
+            bus.set_state(JarvisState.SUCCESS)
     except KeyboardInterrupt:
         print("\n[JARVIS] Bis später.")
         return 0
     finally:
+        ws.stop()
         brain.close()
         tasks.close()
 

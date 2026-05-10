@@ -1,0 +1,66 @@
+// JARVIS – Electron-Hauptprozess
+//
+// Erzeugt zwei Fenster:
+//   1. Schwebende Kugel (immer im Vordergrund, klein, randlos, transparent)
+//   2. Dashboard (auf Klick der Kugel)
+//
+// Die Kugel kann frei verschoben werden (CSS drag region). Ein Klick
+// (kein Drag) öffnet das Dashboard – Detektion siehe orb/orb.js.
+
+const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const path = require('node:path');
+
+let orbWindow = null;
+let dashboardWindow = null;
+
+function createOrbWindow() {
+  const display = screen.getPrimaryDisplay();
+  const { workArea } = display;
+  orbWindow = new BrowserWindow({
+    width: 200,
+    height: 200,
+    x: workArea.x + workArea.width - 220,
+    y: workArea.y + 80,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    hasShadow: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+    },
+  });
+  orbWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  orbWindow.loadFile(path.join(__dirname, 'orb', 'index.html'));
+}
+
+function createDashboardWindow() {
+  if (dashboardWindow) {
+    dashboardWindow.show();
+    dashboardWindow.focus();
+    return;
+  }
+  dashboardWindow = new BrowserWindow({
+    width: 1100,
+    height: 720,
+    title: 'JARVIS Dashboard',
+    backgroundColor: '#0a0e1a',
+    webPreferences: { contextIsolation: true },
+  });
+  dashboardWindow.loadFile(path.join(__dirname, 'ui', 'dashboard.html'));
+  dashboardWindow.on('closed', () => { dashboardWindow = null; });
+}
+
+app.whenReady().then(() => {
+  createOrbWindow();
+  ipcMain.on('jarvis:open-dashboard', () => createDashboardWindow());
+});
+
+// Auf macOS bleiben Apps üblicherweise aktiv; wir schließen nicht beim
+// Schließen aller Fenster.
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});

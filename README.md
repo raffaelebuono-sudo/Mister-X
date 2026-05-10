@@ -75,6 +75,23 @@ Claude entscheidet selbst, welches Tool zur Anfrage passt:
 | `add_task` / `list_tasks` / `complete_task` | Aufgaben & Erinnerungen |
 | `system_status` | CPU, RAM, Akku, Disk, Uptime |
 
+## Visuelle Kugel (Phase 4)
+
+Die schwebende Kugel ist eine Electron-App in `dashboard/mac_app/`. Sie
+verbindet sich per WebSocket zum Python-Backend und animiert sich
+zustandsabhängig (sleeping/listening/thinking/speaking/error/success).
+
+```bash
+# In einem zweiten Terminal, während main.py läuft:
+cd dashboard/mac_app
+npm install        # einmalig
+npm start          # öffnet die Kugel
+```
+
+- **Verschieben**: Kugel mit gedrückter Maustaste ziehen.
+- **Klick**: öffnet das Dashboard-Fenster (Inhalt folgt in Phase 5).
+- WebSocket-Endpunkt: `ws://127.0.0.1:8765` (in `config.py` änderbar).
+
 ## Phasen-Plan
 
 | Phase | Inhalt | Status |
@@ -82,7 +99,7 @@ Claude entscheidet selbst, welches Tool zur Anfrage passt:
 | 1 | Sprachkern (Whisper, Claude, TTS) | ✅ |
 | 2 | SQLite-Gedächtnis & Persönlichkeits-Tuning | ✅ |
 | 3 | Tools: Web-Suche, macOS-Steuerung, Aufgaben, System-Monitor | ✅ |
-| 4 | Visuelle Kugel (Electron + Three.js) | offen |
+| 4 | Visuelle Kugel (Electron + Three.js) | ✅ |
 | 5 | Vollständiges Dashboard | offen |
 | 6 | iPhone Web-Interface | offen |
 | 7 | 24/7-Betrieb (LaunchAgent) | offen |

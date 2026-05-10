@@ -47,6 +47,10 @@ class Config:
     db_path: Path = PROJECT_ROOT / "data" / "jarvis.db"
     memory_pairs: int = 20   # Anzahl Q/A-Paare als Kontext
 
+    # --- WebSocket-Server (Phase 4) ---
+    ws_host: str = "127.0.0.1"
+    ws_port: int = 8765
+
     @classmethod
     def from_env(cls) -> "Config":
         api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()

@@ -27,3 +27,8 @@ logs/
 # IDE
 .vscode/
 .idea/
+
+# Electron / Node
+node_modules/
+dist/
+out/
