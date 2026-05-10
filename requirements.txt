@@ -1,0 +1,11 @@
+# JARVIS – Phase 1 (Sprachkern)
+# ---------------------------------
+anthropic>=0.40.0          # Claude API Client
+openai-whisper>=20231117   # Lokale Spracherkennung
+sounddevice>=0.4.6         # Mikrofon-Aufnahme
+numpy>=1.24.0              # Audio-Daten verarbeiten
+scipy>=1.11.0              # WAV-Datei Schreiben
+python-dotenv>=1.0.0       # .env Datei laden
+
+# Optional (Phase 1)
+elevenlabs>=1.0.0          # Natürliche deutsche Stimme (sonst macOS 'say')

@@ -1,0 +1,29 @@
+# Geheimnisse
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# JARVIS-Daten
+*.db
+*.sqlite
+data/
+logs/
+*.log
+
+# Audio-Buffer
+*.wav
+!tests/fixtures/*.wav
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
