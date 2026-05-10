@@ -105,17 +105,33 @@ function connect() {
 }
 connect();
 
-// --- Klick (nicht Drag) öffnet das Dashboard ---
+// --- Drag und Klick (nicht via CSS-Drag-Region, weil macOS die Maus-Events
+//     in Drag-Regions schluckt). Wir tracken in JS und delegieren das
+//     Verschieben an den Hauptprozess via IPC.
 let press = null;
+let dragging = false;
+const DRAG_THRESHOLD_PX = 4;
+
 window.addEventListener('mousedown', (e) => {
   press = { x: e.screenX, y: e.screenY, t: Date.now() };
+  dragging = false;
+  window.jarvis?.dragStart?.(e.screenX, e.screenY);
+});
+window.addEventListener('mousemove', (e) => {
+  if (!press) return;
+  const dist = Math.hypot(e.screenX - press.x, e.screenY - press.y);
+  if (!dragging && dist > DRAG_THRESHOLD_PX) dragging = true;
+  if (dragging) window.jarvis?.drag?.(e.screenX, e.screenY);
 });
 window.addEventListener('mouseup', (e) => {
   if (!press) return;
-  const dist = Math.hypot(e.screenX - press.x, e.screenY - press.y);
   const dur = Date.now() - press.t;
+  const wasDragging = dragging;
   press = null;
-  if (dist < 5 && dur < 400) {
+  dragging = false;
+  window.jarvis?.dragEnd?.();
+  // Wenn nicht gedraggt wurde und der Klick kurz war: Dashboard öffnen.
+  if (!wasDragging && dur < 500) {
     window.jarvis?.openDashboard?.();
   }
 });

@@ -11,10 +11,11 @@
       overflow: hidden;
       width: 100vw;
       height: 100vh;
-      /* Ganzes Fenster verschiebbar */
-      -webkit-app-region: drag;
       cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
     }
+    body:active { cursor: grabbing; }
     canvas {
       display: block;
       width: 100%;
