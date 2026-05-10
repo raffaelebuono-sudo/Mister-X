@@ -62,6 +62,15 @@ class Config:
     # Wenn True, wird die schwebende Kugel automatisch beim Start mitgestartet.
     auto_start_orb: bool = True
 
+    # --- Computer Use (Claude steuert den Mac direkt, Beta-Feature) ---
+    # Anthropic-Beta-String und Tool-Typ; ggf. anpassen, wenn Anthropic
+    # eine neuere Version veröffentlicht.
+    computer_use_model: str = "claude-sonnet-4-6"
+    computer_use_beta: str = "computer-use-2025-01-24"
+    computer_use_tool_type: str = "computer_20250124"
+    computer_use_max_steps: int = 30
+    computer_use_max_tokens: int = 2048
+
     @classmethod
     def from_env(cls) -> "Config":
         api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()

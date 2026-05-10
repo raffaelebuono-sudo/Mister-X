@@ -192,6 +192,30 @@ class ToolRegistry:
                 ),
             ),
             _Tool(
+                name="computer_use",
+                description=(
+                    "Steuert den Mac direkt, um eine Aufgabe auszuführen "
+                    "(öffnet Apps, klickt, tippt, scrollt). Verwende dieses "
+                    "Tool, wenn der Benutzer eine konkrete Aktion auf seinem "
+                    "Mac ausgeführt haben will. Beispiele: "
+                    "'Öffne Safari und suche Pizza in Wien', "
+                    "'Erstelle eine neue Notiz', 'Spiele in Spotify Lo-Fi'. "
+                    "Gib die Aufgabe in einem klaren Satz an. Kostet pro "
+                    "Aufgabe einige Cent in Tokens und dauert 10-60 Sekunden."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "task": {
+                            "type": "string",
+                            "description": "Klare Beschreibung der Aufgabe in einem Satz.",
+                        },
+                    },
+                    "required": ["task"],
+                },
+                fn=lambda task: core.run_computer_task(task),
+            ),
+            _Tool(
                 name="mark_briefings_read",
                 description=(
                     "Markiert ein einzelnes Briefing oder alle als gelesen."

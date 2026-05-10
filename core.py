@@ -50,6 +50,9 @@ class JarvisCore:
         self.scheduler = Scheduler()
         self._setup_scheduler()
 
+        # Computer-Use-Agent (lazy initialisiert, da pyautogui Permissions braucht)
+        self._computer_agent = None
+
     # --- Anfragen verarbeiten ---
 
     def process_text(self, text: str, *, speak: bool) -> str:
@@ -132,6 +135,28 @@ class JarvisCore:
 
     def mark_all_briefings_read(self) -> int:
         return self.briefings.mark_all_read()
+
+    # --- Computer Use ---
+
+    def run_computer_task(self, task: str) -> str:
+        """Lässt Claude den Mac direkt steuern, um die Aufgabe auszuführen."""
+        if self._computer_agent is None:
+            from agents.computer_agent import ComputerAgent
+            self._computer_agent = ComputerAgent(self)
+        prev_state = self.bus._state
+        self.bus.set_state(JarvisState.THINKING, f"Computer-Use: {task[:60]}")
+        try:
+            result = self._computer_agent.run(task)
+        except Exception as exc:
+            self.bus.set_state(JarvisState.ERROR, str(exc))
+            return f"Computer-Use fehlgeschlagen: {exc}"
+        finally:
+            self.bus.set_state(prev_state)
+        # Als Briefing ablegen, damit der Verlauf erhalten bleibt
+        self.briefings.add(
+            "computer_use", f"Mac-Aktion: {task[:60]}", result,
+        )
+        return result
 
     # --- Scheduler ---
 

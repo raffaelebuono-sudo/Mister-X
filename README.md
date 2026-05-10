@@ -149,6 +149,41 @@ nicht will, setzt `web_host = "127.0.0.1"` in `config.py`.
 | 6 | iPhone Web-Interface | ✅ |
 | 7 | 24/7-Betrieb (LaunchAgent), Logging, Polishing | ✅ |
 | 8 | Friday-Mode: Hintergrund-Agenten, Scheduler, Briefings | ✅ |
+| 9 | Computer Use: Claude steuert den Mac direkt | ✅ |
+
+## Computer Use – Claude steuert den Mac (Phase 9)
+
+JARVIS kann jetzt selbst Apps öffnen, klicken, tippen und Screenshots
+analysieren. Ausgelöst über das Tool `computer_use`. Beispiele:
+
+- *„Jarvis, öffne Safari und such mir Pizza in Wien"*
+- *„Jarvis, erstelle eine neue Notiz mit dem Titel Einkaufsliste"*
+- *„Jarvis, pause meine Musik"*
+
+### Erforderliche Berechtigungen (einmalig)
+
+macOS muss der App, von der aus Python gestartet wird (Terminal,
+iTerm, oder dem Python-Binary), zwei Rechte erteilen:
+
+1. **Bedienungshilfen**: *Systemeinstellungen → Datenschutz & Sicherheit →
+   Bedienungshilfen* → Häkchen für Terminal/iTerm/Python.
+2. **Bildschirmaufnahme**: *Systemeinstellungen → Datenschutz & Sicherheit →
+   Bildschirm- & Audioaufnahme* → Häkchen für Terminal/iTerm/Python.
+
+Beim ersten Aufruf von `computer_use` zeigt macOS automatisch einen
+Dialog – einmalig erlauben, danach geht's.
+
+### Sicherheits-Stops
+
+- pyautogui-FAILSAFE: Maus oben-links in die Ecke schieben → bricht alles ab.
+- Schritt-Limit: 30 (in `config.py:computer_use_max_steps` änderbar).
+- System-Prompt verbietet destruktive Aktionen ohne klare Anweisung.
+
+### Kosten
+
+Jede Aufgabe schickt mehrere Screenshots an Claude (Bilder = mehr Tokens).
+Realistisch: 5–30 Cent pro Aufgabe. In `config.py` lassen sich Modell,
+Token-Limit und Schrittzahl anpassen.
 
 ## Friday-Mode: Hintergrund-Agenten (Phase 8)
 
