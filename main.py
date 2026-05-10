@@ -1,12 +1,13 @@
-"""JARVIS – Hauptprogramm (Phase 1).
+"""JARVIS – Hauptprogramm.
 
 Ablauf:
-  1. Whisper, Speaker und Claude initialisieren
+  1. Whisper, Speaker, Tools und Claude initialisieren
   2. Auf Wake-Phrase „Guten Morgen JARVIS" warten
   3. Begrüßen, Frage aufnehmen, an Claude schicken
+     (Claude darf Tools wie Web-Suche oder System-Status nutzen)
   4. Antwort aussprechen, dann zurück zu Schritt 2
 
-Phase 1 läuft komplett im Terminal – ohne UI, ohne Kugel.
+Läuft im Terminal – UI, Kugel und Web-Server folgen in Phase 4–6.
 """
 
 from __future__ import annotations
@@ -14,7 +15,10 @@ from __future__ import annotations
 import sys
 
 from brain.claude_client import ClaudeClient
+from brain.memory import Memory
 from config import get_config
+from tools.registry import ToolRegistry
+from tools.task_manager import TaskManager
 from voice.listener import Listener
 from voice.speaker import Speaker
 from voice.wake_word import WakeWordDetector
@@ -27,7 +31,7 @@ BANNER = r"""
  _|  / ___ \ |  \  /    _| |_____)|
 (__)/_/   \_\_|  \/    |_____|____/
 
-       Phase 1 – Sprachkern
+       Phase 3 – Sprache + Gedächtnis + Tools
 """
 
 
@@ -41,7 +45,10 @@ def main() -> int:
 
     listener = Listener()
     speaker = Speaker()
-    brain = ClaudeClient()
+    memory = Memory(cfg.db_path)
+    tasks = TaskManager(cfg.db_path)
+    tools = ToolRegistry(tasks)
+    brain = ClaudeClient(memory=memory, tools=tools)
     wake = WakeWordDetector(listener)
 
     print(f"[JARVIS] Bereit. Wartet auf Wake-Phrase: '{cfg.wake_phrase}'.")
@@ -73,6 +80,7 @@ def main() -> int:
         return 0
     finally:
         brain.close()
+        tasks.close()
 
 
 def _log_chunk(text: str) -> None:

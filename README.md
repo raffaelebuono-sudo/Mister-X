@@ -54,9 +54,26 @@ Mit `Strg+C` beenden.
 │   ├── listener.py          # Mikrofon + Whisper
 │   ├── speaker.py           # ElevenLabs / macOS 'say'
 │   └── wake_word.py         # „Guten Morgen JARVIS"-Erkennung
+├── tools/
+│   ├── registry.py          # Tool-Schemas & Dispatch für Claude
+│   ├── web_search.py        # Tavily Web-Suche
+│   ├── mac_control.py       # macOS-Steuerung (Apps, URLs, Dateien)
+│   ├── task_manager.py      # Aufgaben & Erinnerungen (SQLite)
+│   └── system_monitor.py    # CPU, RAM, Akku, Disk, Uptime
 └── data/
-    └── jarvis.db            # SQLite-Gedächtnis (wird automatisch angelegt)
+    └── jarvis.db            # SQLite – Gedächtnis und Aufgaben
 ```
+
+## Tools, die JARVIS nutzen kann (Phase 3)
+
+Claude entscheidet selbst, welches Tool zur Anfrage passt:
+
+| Tool | Wofür |
+|------|-------|
+| `web_search` | News, Wetter, Aktuelles (braucht `TAVILY_API_KEY`) |
+| `open_app` / `open_url` / `open_file` | macOS-Steuerung |
+| `add_task` / `list_tasks` / `complete_task` | Aufgaben & Erinnerungen |
+| `system_status` | CPU, RAM, Akku, Disk, Uptime |
 
 ## Phasen-Plan
 
@@ -64,7 +81,7 @@ Mit `Strg+C` beenden.
 |------:|--------|--------|
 | 1 | Sprachkern (Whisper, Claude, TTS) | ✅ |
 | 2 | SQLite-Gedächtnis & Persönlichkeits-Tuning | ✅ |
-| 3 | Tools: Web-Suche, macOS-Steuerung, Aufgaben | offen |
+| 3 | Tools: Web-Suche, macOS-Steuerung, Aufgaben, System-Monitor | ✅ |
 | 4 | Visuelle Kugel (Electron + Three.js) | offen |
 | 5 | Vollständiges Dashboard | offen |
 | 6 | iPhone Web-Interface | offen |
