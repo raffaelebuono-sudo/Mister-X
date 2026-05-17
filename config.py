@@ -104,6 +104,23 @@ class Config:
     # bevor JARVIS in den eingeschränkten Modus geht.
     api_retries: int = 3
     api_retry_base_delay: float = 2.0      # Sekunden, verdoppelt sich je Versuch
+
+    # --- Multi-Cloud-Fallback (Claude-Niveau) ---
+    # Greift, wenn Anthropic ausfällt, aber Internet noch geht.
+    # Keys via .env: OPENAI_API_KEY / GEMINI_API_KEY.
+    cloud_fallback_enabled: bool = True
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4o"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.0-flash"
+
+    # --- Lokales Fallback-Gehirn (Ollama) ---
+    # Letzte Reserve, wenn auch kein anderer Cloud-Anbieter geht
+    # (= echtes Offline). Modell vorher ziehen: ollama pull llama3.2
+    # Für MacBook Air mit 8GB: 'llama3.2' (3B). Mit 16GB: 'llama3.1'.
+    local_brain_enabled: bool = True
+    local_brain_url: str = "http://127.0.0.1:11434"
+    local_brain_model: str = "llama3.2"
     # Watchdog: wenn der Voice-Loop länger als so viele Sekunden in
     # einer Iteration hängt, wird das geloggt (Hänger-Erkennung).
     watchdog_timeout_seconds: int = 180
@@ -127,6 +144,9 @@ class Config:
         mode = os.getenv("JARVIS_ACTIVATION_MODE", "").strip()
         if mode in ("code", "voice"):
             kwargs["activation_mode"] = mode
+        # Multi-Cloud-Fallback-Keys
+        kwargs["openai_api_key"] = os.getenv("OPENAI_API_KEY") or None
+        kwargs["gemini_api_key"] = os.getenv("GEMINI_API_KEY") or None
         return cls(**kwargs)
 
 

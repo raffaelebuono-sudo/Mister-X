@@ -17,6 +17,8 @@ from agents.builtin import DEFAULT_AGENTS
 from agents.scheduler import Scheduler
 from agents.store import BriefingsStore
 from brain.claude_client import ClaudeClient
+from brain.cloud_fallback import CloudFallbackBrain
+from brain.local_brain import LocalBrain
 from brain.memory import Memory
 from brain.profile import UserProfile
 from config import Config
@@ -44,6 +46,17 @@ class JarvisCore:
         self.tools = ToolRegistry(self)
         self.brain = ClaudeClient(
             memory=self.memory, tools=self.tools, profile=self.profile,
+        )
+        self.cloud_fallback = (
+            CloudFallbackBrain(
+                cfg.openai_api_key, cfg.openai_model,
+                cfg.gemini_api_key, cfg.gemini_model,
+            )
+            if cfg.cloud_fallback_enabled else None
+        )
+        self.local_brain = (
+            LocalBrain(cfg.local_brain_url, cfg.local_brain_model)
+            if cfg.local_brain_enabled else None
         )
         self.listener = Listener()
         self.speaker = Speaker()
@@ -82,15 +95,32 @@ class JarvisCore:
                     label="Claude-Anfrage",
                 )
             except OfflineError:
-                self.bus.set_state(JarvisState.ERROR, "offline")
-                self.bus.push_brain("health", "Cloud nicht erreichbar")
-                reply = ("Ich bin gerade offline und komme nicht an mein "
-                         "Cloud-Gehirn. Ich versuche es später nochmal.")
-                self.bus.push_chat("assistant", reply)
-                if speak:
-                    self.bus.set_state(JarvisState.SPEAKING, reply)
-                    self.speaker.say(reply)
-                return reply
+                self.bus.push_brain("health", "Claude nicht erreichbar")
+                # Fallback-Kette: Cloud-Anbieter → lokales Modell → aufgeben
+                cloud_reply = self._try_cloud_fallback(text)
+                if cloud_reply:
+                    self.bus.push_brain(
+                        "cloud_fallback", "Antwort vom Fallback-Anbieter")
+                    reply = cloud_reply
+                    self.bus.push_chat("assistant", reply)
+                else:
+                    local_reply = self._try_local_brain(text)
+                    if local_reply:
+                        self.bus.push_brain(
+                            "local_brain",
+                            "Antwort vom lokalen Modell (Offline-Modus)")
+                        reply = local_reply
+                        self.bus.push_chat("assistant", reply)
+                    else:
+                        self.bus.set_state(JarvisState.ERROR, "offline")
+                        reply = ("Ich komme gerade weder an Claude noch an "
+                                 "einen anderen Anbieter oder ein lokales "
+                                 "Modell. Ich versuche es automatisch nochmal.")
+                        self.bus.push_chat("assistant", reply)
+                        if speak:
+                            self.bus.set_state(JarvisState.SPEAKING, reply)
+                            self.speaker.say(reply)
+                        return reply
             except Exception as exc:
                 self.bus.set_state(JarvisState.ERROR, str(exc))
                 self.bus.push_brain("error", str(exc))
@@ -113,6 +143,51 @@ class JarvisCore:
             daemon=True,
         ).start()
         return reply
+
+    def _try_cloud_fallback(self, text: str) -> Optional[str]:
+        """Fallback auf OpenAI/Gemini, wenn Claude (Anthropic) ausfällt.
+
+        Gleiche Qualitätsklasse wie Claude. Persistiert bei Erfolg selbst
+        ins Gedächtnis, da der reguläre brain.ask()-Pfad übersprungen wurde.
+        """
+        if self.cloud_fallback is None or not self.cloud_fallback.is_configured():
+            return None
+        try:
+            from brain.system_prompt import SYSTEM_PROMPT
+            history = self.memory.recent_messages(self.cfg.memory_pairs)
+            reply = self.cloud_fallback.ask(SYSTEM_PROMPT, history, text)
+            if reply:
+                self.memory.add_user(text)
+                self.memory.add_assistant(reply)
+                return reply
+            return None
+        except Exception as exc:
+            print(f"[CloudFallback] fehlgeschlagen: {exc}")
+            return None
+
+    def _try_local_brain(self, text: str) -> Optional[str]:
+        """Fallback auf das lokale Ollama-Modell, wenn die Cloud weg ist.
+
+        Liefert die Antwort oder None, wenn kein lokales Modell verfügbar
+        ist. Persistiert bei Erfolg selbst ins Gesprächs-Gedächtnis,
+        da der reguläre brain.ask()-Pfad übersprungen wurde.
+        """
+        if self.local_brain is None:
+            return None
+        try:
+            if not self.local_brain.is_available():
+                return None
+            from brain.system_prompt import SYSTEM_PROMPT
+            history = self.memory.recent_messages(self.cfg.memory_pairs)
+            reply = self.local_brain.ask(SYSTEM_PROMPT, history, text)
+            if reply:
+                self.memory.add_user(text)
+                self.memory.add_assistant(reply)
+                return reply
+            return None
+        except Exception as exc:
+            print(f"[LocalBrain] Fallback fehlgeschlagen: {exc}")
+            return None
 
     # --- Langzeitgedächtnis ---
 

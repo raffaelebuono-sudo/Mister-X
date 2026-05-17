@@ -151,6 +151,69 @@ nicht will, setzt `web_host = "127.0.0.1"` in `config.py`.
 | 8 | Friday-Mode: Hintergrund-Agenten, Scheduler, Briefings | ✅ |
 | 9 | Computer Use: Claude steuert den Mac direkt | ✅ |
 | 10 | Langzeitgedächtnis: JARVIS lernt dich kennen | ✅ |
+| 11 | HUD-Dashboard, Klatsch-/Code-Aktivierung, Brain-Feed | ✅ |
+| 12 | Agenten-Armee + Welcome-Ritual + System-Inspektion | ✅ |
+| 13 | Autonomie-Fundament: Resilienz, Selbst-Überwachung | ✅ |
+| 14 | Lokales Fallback-Gehirn (Ollama, offline) | ✅ |
+| 15 | Multi-Cloud-Fallback (OpenAI/Gemini auf Claude-Niveau) | ✅ |
+
+## Gehirn-Fallback-Kette (Phase 14 + 15)
+
+JARVIS bleibt antwortfähig, auch wenn etwas ausfällt. Reihenfolge:
+
+1. **Claude Sonnet 4.6** (Anthropic) — primär, volle Tool-/Profil-Power
+2. **OpenAI / Gemini** — wenn Anthropic streikt, Internet aber geht.
+   Gleiche Qualitätsklasse. Keys via `.env`:
+   `OPENAI_API_KEY`, `GEMINI_API_KEY` (einer reicht).
+3. **Lokales Modell (Ollama)** — echtes Offline, schwächer, Notnagel.
+4. **Klartext-Hinweis**, dass gerade gar nichts geht (kein Crash).
+
+Jede Stufe greift nur, wenn die darüber ausfällt; sobald Claude
+wieder erreichbar ist, läuft automatisch alles wieder primär.
+
+## Geplant: Externer Server-Brain (Phase 16, Hardware nötig)
+
+Für echte Cloud-Unabhängigkeit auf nahezu Claude-Niveau – noch nicht
+gebaut, weil Hardware fehlt. Bauplan, wenn du investierst:
+
+- **Hardware**: Mini-PC / Mac Studio / Server mit GPU, 48 GB+ RAM
+  (z. B. RTX 4090 24 GB oder Mac Studio M-Ultra). Modell:
+  Llama 3.3 70B oder Qwen 2.5 72B (quantisiert).
+- **Software dort**: Ollama oder vLLM als OpenAI-kompatibler Endpoint.
+- **Anbindung hier**: Der bestehende `LocalBrain` zeigt dann statt auf
+  `127.0.0.1:11434` auf die Server-IP im Heimnetz
+  (`local_brain_url` in `config.py`). Kein neuer Code nötig –
+  die Fallback-Kette nimmt ihn automatisch als Stufe 3.
+- **Optional**: WireGuard-VPN, damit der Server-Brain auch von
+  unterwegs erreichbar ist.
+
+Realistische Kosten: 2.000–4.000 € einmalig. Qualität: nahe Claude,
+nicht gleich. Erst sinnvoll, wenn Internet-Unabhängigkeit Priorität hat.
+
+## Lokales Fallback-Gehirn (Phase 14)
+
+Wenn die Cloud (Anthropic) nicht erreichbar ist, antwortet JARVIS
+mit einem **lokalen Modell** weiter, statt stumm zu bleiben. Sobald
+die Verbindung zurück ist, schaltet er automatisch wieder auf Claude.
+
+Einrichten (einmalig):
+
+```bash
+# 1. Ollama installieren
+brew install ollama
+# 2. Ollama-Dienst starten (eigenes Terminal, läuft im Hintergrund)
+ollama serve
+# 3. Modell ziehen – für MacBook Air 8GB: llama3.2 (3B, ~2GB)
+ollama pull llama3.2
+```
+
+In `config.py` einstellbar: `local_brain_model` (z. B. `llama3.1`
+bei 16GB RAM), `local_brain_enabled`, `local_brain_url`.
+
+Hinweis: Das lokale Modell ist deutlich schwächer als Claude und
+hat keine Tools/kein Profil – es ist ein Notnagel für Offline-Phasen,
+kein Ersatz. Auf einem lüfterlosen MacBook Air ist es spürbar
+langsamer; deshalb nur als Fallback aktiv, nicht als Hauptgehirn.
 
 ## Langzeitgedächtnis (Phase 10)
 
