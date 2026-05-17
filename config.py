@@ -34,7 +34,7 @@ class Config:
     # schnell und kann Deutsch (gut für flüssige Reaktion).
     elevenlabs_api_key: str | None = None
     elevenlabs_voice_id: str | None = None
-    elevenlabs_model: str = "eleven_turbo_v2_5"
+    elevenlabs_model: str = "eleven_multilingual_v2"
     # macOS-Stimme erzwingen (z. B. eine geladene Premium-Siri-Stimme).
     # Leer = automatische Auswahl der besten deutschen Stimme.
     mac_voice: str | None = None

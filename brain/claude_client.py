@@ -127,8 +127,15 @@ class ClaudeClient:
         return results
 
     def _build_system_prompt(self) -> str:
-        now = datetime.now().strftime("%A, %d.%m.%Y, %H:%M")
-        parts = [SYSTEM_PROMPT, f"\nAktuelle Zeit: {now}\n"]
+        n = datetime.now()
+        wd = ["Montag", "Dienstag", "Mittwoch", "Donnerstag",
+              "Freitag", "Samstag", "Sonntag"][n.weekday()]
+        time_ctx = (
+            "AKTUELLE ZEIT (verbindlich – nutze AUSSCHLIESSLICH diese als "
+            f"'jetzt' und 'heute'): {wd}, {n.strftime('%d.%m.%Y, %H:%M')} Uhr. "
+            "Erfinde kein anderes Datum; jede Zeitangabe basiert exakt hierauf."
+        )
+        parts = [SYSTEM_PROMPT, f"\n{time_ctx}\n"]
         if self._profile is not None:
             profile_text = self._profile.to_prompt_text()
             if profile_text:

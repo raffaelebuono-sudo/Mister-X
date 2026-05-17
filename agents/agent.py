@@ -53,6 +53,20 @@ class Agent:
         prompt = (instruction or self.default_instruction or
                   "Erledige deine Aufgabe entsprechend deiner Rolle.")
 
+        # Echte Uhrzeit verbindlich injizieren – sonst raten Agenten
+        # das Datum ("springt von Tag zu Tag").
+        from datetime import datetime
+        _wd = ["Montag", "Dienstag", "Mittwoch", "Donnerstag",
+               "Freitag", "Samstag", "Sonntag"][datetime.now().weekday()]
+        time_ctx = (
+            "AKTUELLE ZEIT (verbindlich – nutze AUSSCHLIESSLICH diese als "
+            f"'jetzt' und 'heute'): {_wd}, "
+            f"{datetime.now().strftime('%d.%m.%Y, %H:%M')} Uhr. "
+            "Erfinde KEIN anderes Datum und keine andere Uhrzeit. "
+            "Jede Zeitangabe muss exakt hierauf basieren.\n\n"
+        )
+        system_prompt = time_ctx + self.system_prompt
+
         messages = [{"role": "user", "content": prompt}]
         tools_param = self._core.tools.schemas() if self.use_tools else []
 
@@ -65,7 +79,7 @@ class Agent:
                 return client.messages.create(
                     model=cfg.claude_model,
                     max_tokens=self.max_tokens,
-                    system=self.system_prompt,
+                    system=system_prompt,
                     tools=tools_param,
                     messages=messages,
                 )

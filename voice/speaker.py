@@ -58,11 +58,29 @@ class Speaker:
 
     def _say_elevenlabs(self, text: str) -> None:
         from elevenlabs import play
-        audio = self._eleven_client.text_to_speech.convert(
-            voice_id=self._eleven_voice,
-            model_id=self._eleven_model,
-            text=text,
-        )
+        # Ausdrucksstarke Einstellung: niedrige stability = lebendiger
+        # (nicht monoton/tot), style hebt die Betonung, speaker_boost
+        # macht die Stimme präsenter.
+        settings = {
+            "stability": 0.35,
+            "similarity_boost": 0.85,
+            "style": 0.45,
+            "use_speaker_boost": True,
+        }
+        try:
+            audio = self._eleven_client.text_to_speech.convert(
+                voice_id=self._eleven_voice,
+                model_id=self._eleven_model,
+                text=text,
+                voice_settings=settings,
+            )
+        except TypeError:
+            # Ältere SDK-Signatur ohne voice_settings-Kwarg.
+            audio = self._eleven_client.text_to_speech.convert(
+                voice_id=self._eleven_voice,
+                model_id=self._eleven_model,
+                text=text,
+            )
         play(audio)
 
     # --- öffentliche API ---
