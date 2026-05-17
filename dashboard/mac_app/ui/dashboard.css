@@ -131,6 +131,19 @@ html, body {
   letter-spacing: .12em;
 }
 
+.health {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .72rem; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted);
+}
+.health-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ok); box-shadow: 0 0 8px currentColor; color: var(--ok);
+}
+.health-dot[data-state="degraded"] { background: var(--accent-warm); color: var(--accent-warm); }
+.health-dot[data-state="offline"]  { background: var(--error); color: var(--error); }
+.health-label { color: inherit; }
+
 /* --- Panels --- */
 .panel {
   background: var(--panel);

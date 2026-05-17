@@ -56,14 +56,28 @@ class Agent:
         messages = [{"role": "user", "content": prompt}]
         tools_param = self._core.tools.schemas() if self.use_tools else []
 
+        # Resilienz: Agenten-Calls über den HealthMonitor des Core,
+        # damit Netzwerk-Hänger nicht den Scheduler-Thread töten.
+        health = getattr(self._core, "health", None)
+
         for _ in range(MAX_TOOL_ITERATIONS):
-            response = client.messages.create(
-                model=cfg.claude_model,
-                max_tokens=self.max_tokens,
-                system=self.system_prompt,
-                tools=tools_param,
-                messages=messages,
-            )
+            def _call():
+                return client.messages.create(
+                    model=cfg.claude_model,
+                    max_tokens=self.max_tokens,
+                    system=self.system_prompt,
+                    tools=tools_param,
+                    messages=messages,
+                )
+            if health is not None:
+                response = health.resilient(
+                    _call,
+                    retries=cfg.api_retries,
+                    base_delay=cfg.api_retry_base_delay,
+                    label=f"Agent {self.name}",
+                )
+            else:
+                response = _call()
             messages.append({"role": "assistant", "content": response.content})
 
             if response.stop_reason != "tool_use":

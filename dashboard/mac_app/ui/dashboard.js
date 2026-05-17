@@ -220,7 +220,19 @@ function routeMessage(data) {
     case 'brain':    onBrain(data); break;
     case 'briefing': onBriefing(data); break;
     case 'activate': onActivate(data); break;
+    case 'health':   onHealth(data); break;
   }
+}
+
+function onHealth({ health }) {
+  if (!health) return;
+  const dot = document.getElementById('health-dot');
+  const label = document.getElementById('health-label');
+  let st = 'online', txt = 'online';
+  if (!health.online) { st = 'offline'; txt = 'offline'; }
+  else if (health.degraded || !health.api_ok) { st = 'degraded'; txt = 'eingeschränkt'; }
+  dot.dataset.state = st;
+  label.textContent = txt;
 }
 
 // --- Handler ---

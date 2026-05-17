@@ -186,9 +186,19 @@ def _is_goodbye(text: str) -> bool:
 
 def _system_monitor_loop(core: JarvisCore, stop_flag: threading.Event) -> None:
     log = jarvis_logger.get("monitor")
+    heartbeat = 0
     while not stop_flag.wait(SYSTEM_STATS_INTERVAL):
         try:
             core.bus.push_system(system_monitor.get_status())
+            core.bus.publish({"type": "health", "health": core.health.status()})
+            # Alle ~60s ein Heartbeat ins Log – Beleg, dass JARVIS lebt
+            # (wichtig im Daemon-Modus zur Diagnose).
+            heartbeat += 1
+            if heartbeat >= 30:
+                heartbeat = 0
+                h = core.health.status()
+                log.info("Heartbeat – online=%s api_ok=%s degraded=%s",
+                         h["online"], h["api_ok"], h["degraded"])
         except Exception as exc:
             # System-Monitor sollte den Voice-Loop nie hart fail lassen.
             log.warning("System-Monitor-Fehler: %s", exc)

@@ -92,6 +92,15 @@ class Config:
     # nicht wiederholt, wenn du gerade aktiv mit ihm redest.
     welcome_cooldown_minutes: int = 5
 
+    # --- Resilienz / Autonomie ---
+    # Wie oft Cloud-Aufrufe bei Netzwerkfehlern wiederholt werden,
+    # bevor JARVIS in den eingeschränkten Modus geht.
+    api_retries: int = 3
+    api_retry_base_delay: float = 2.0      # Sekunden, verdoppelt sich je Versuch
+    # Watchdog: wenn der Voice-Loop länger als so viele Sekunden in
+    # einer Iteration hängt, wird das geloggt (Hänger-Erkennung).
+    watchdog_timeout_seconds: int = 180
+
     @classmethod
     def from_env(cls) -> "Config":
         api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()

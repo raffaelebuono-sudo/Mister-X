@@ -26,12 +26,14 @@ from tools.registry import ToolRegistry
 from tools.task_manager import TaskManager
 from voice.listener import Listener
 from voice.speaker import Speaker
+from health import HealthMonitor, OfflineError
 
 
 class JarvisCore:
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
         self.bus = EventBus()
+        self.health = HealthMonitor(self.bus)
         self.memory = Memory(cfg.db_path)
         self.tasks = TaskManager(cfg.db_path)
         self.briefings = BriefingsStore(cfg.db_path)
@@ -72,7 +74,23 @@ class JarvisCore:
             self.bus.push_brain("thinking", f"verarbeite: {text[:60]}")
             self.bus.set_state(JarvisState.THINKING)
             try:
-                reply = self.brain.ask(text)
+                # Resilient: Retry mit Backoff, sauberes Degradieren offline.
+                reply = self.health.resilient(
+                    lambda: self.brain.ask(text),
+                    retries=self.cfg.api_retries,
+                    base_delay=self.cfg.api_retry_base_delay,
+                    label="Claude-Anfrage",
+                )
+            except OfflineError:
+                self.bus.set_state(JarvisState.ERROR, "offline")
+                self.bus.push_brain("health", "Cloud nicht erreichbar")
+                reply = ("Ich bin gerade offline und komme nicht an mein "
+                         "Cloud-Gehirn. Ich versuche es später nochmal.")
+                self.bus.push_chat("assistant", reply)
+                if speak:
+                    self.bus.set_state(JarvisState.SPEAKING, reply)
+                    self.speaker.say(reply)
+                return reply
             except Exception as exc:
                 self.bus.set_state(JarvisState.ERROR, str(exc))
                 self.bus.push_brain("error", str(exc))
@@ -230,7 +248,13 @@ class JarvisCore:
         agent = self._agents.get(name)
         if agent is None:
             return f"Unbekannter Agent: {name}. Verfügbar: {', '.join(self._agents)}"
-        result = agent.run(instruction)
+        try:
+            result = agent.run(instruction)
+        except OfflineError:
+            self.bus.push_brain("health", f"Agent {name}: offline")
+            return ("Ich komme gerade nicht ins Internet, deshalb kann ich "
+                    "diesen Bericht jetzt nicht erstellen. Ich versuche es "
+                    "automatisch nochmal, sobald die Verbindung wieder steht.")
         # Dashboard live informieren
         self.bus.publish({
             "type": "briefing",
