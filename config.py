@@ -37,7 +37,14 @@ class Config:
     wake_chunk_seconds: float = 4.0    # Dauer eines Wake-Word-Lauschfensters
     command_seconds: float = 10.0      # Dauer der eigentlichen Aufnahme nach Wake-Word
 
-    # --- Wake-Phrase ---
+    # --- Aktivierung ---
+    # "code"  : JARVIS schläft, bis im Terminal der Code eingegeben wird.
+    #           Kein Mikro-Mithören im Leerlauf → keine Fehlalarme.
+    # "voice" : klassisch per Wake-Phrase / Klatschen.
+    activation_mode: str = "code"
+    activation_code: str = "1234"   # über .env: JARVIS_ACTIVATION_CODE
+
+    # --- Wake-Phrase (nur relevant bei activation_mode = "voice") ---
     wake_phrase: str = "jarvis"
 
     # --- Klatsch-Aktivierung ---
@@ -108,11 +115,19 @@ class Config:
             raise RuntimeError(
                 "ANTHROPIC_API_KEY fehlt. Bitte in der .env-Datei eintragen."
             )
-        return cls(
+        kwargs = dict(
             anthropic_api_key=api_key,
             elevenlabs_api_key=os.getenv("ELEVENLABS_API_KEY") or None,
             elevenlabs_voice_id=os.getenv("ELEVENLABS_VOICE_ID") or None,
         )
+        # Optionale .env-Overrides
+        code = os.getenv("JARVIS_ACTIVATION_CODE", "").strip()
+        if code:
+            kwargs["activation_code"] = code
+        mode = os.getenv("JARVIS_ACTIVATION_MODE", "").strip()
+        if mode in ("code", "voice"):
+            kwargs["activation_mode"] = mode
+        return cls(**kwargs)
 
 
 CONFIG: Config | None = None

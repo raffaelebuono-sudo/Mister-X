@@ -15,6 +15,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import logger as jarvis_logger
@@ -75,11 +76,17 @@ def main() -> int:
     )
     monitor.start()
 
-    wake = WakeWordDetector(core.listener)
+    # Wake-Detektor nur im Voice-Modus nötig (im Code-Modus kein Mithören).
+    wake = WakeWordDetector(core.listener) if cfg.activation_mode == "voice" else None
 
-    log.info("Bereit. Wake-Phrase: '%s'", cfg.wake_phrase)
-    print(f"[JARVIS] Bereit. Wartet auf Wake-Phrase: '{cfg.wake_phrase}'.")
-    print("[JARVIS] Mit Strg+C beenden.")
+    if cfg.activation_mode == "code":
+        log.info("Bereit. Aktivierung per Code im Terminal.")
+        print("\n[JARVIS] Schläft. Zum Aktivieren den Code eingeben und Enter.")
+        print("[JARVIS] Mit Strg+C beenden.")
+    else:
+        log.info("Bereit. Wake-Phrase: '%s'", cfg.wake_phrase)
+        print(f"[JARVIS] Bereit. Wartet auf Wake-Phrase: '{cfg.wake_phrase}'.")
+        print("[JARVIS] Mit Strg+C beenden.")
     core.bus.set_state(JarvisState.SLEEPING)
 
     try:
@@ -113,8 +120,13 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
     Stille führt nicht zum Schlaf – er hört einfach weiter zu.
     """
     core.bus.set_state(JarvisState.SLEEPING)
-    trigger = wake.wait_for_wake(on_chunk=_log_chunk)
-    source = "clap" if trigger == "[clap]" else "wake_word"
+
+    if cfg.activation_mode == "code":
+        _wait_for_code(cfg, log)
+        source = "code"
+    else:
+        trigger = wake.wait_for_wake(on_chunk=_log_chunk)
+        source = "clap" if trigger == "[clap]" else "wake_word"
     log.info("Aktivierung über %s.", source)
 
     # Dashboard sofort nach vorne holen
@@ -208,6 +220,31 @@ def _log_chunk(text: str) -> None:
     if text:
         # Nur ausgeben, wenn überhaupt etwas verstanden wurde.
         print(f"  ... gehört: {text!r}")
+
+
+def _wait_for_code(cfg, log) -> None:
+    """Blockiert, bis im Terminal der korrekte Aktivierungs-Code kommt.
+
+    Kein Mikro-Mithören im Leerlauf – damit sind Fehlauslösungen durch
+    Geräusche/TV ausgeschlossen.
+    """
+    while True:
+        try:
+            entered = input("Code eingeben (Enter) → ").strip()
+        except EOFError:
+            # Kein Terminal (z. B. unter LaunchAgent). Code-Modus braucht
+            # ein interaktives Terminal – hier einfach passiv warten.
+            log.warning("Code-Modus ohne Terminal – warte passiv. "
+                        "Für Autostart bitte activation_mode='voice' nutzen.")
+            time.sleep(3600)
+            continue
+        except KeyboardInterrupt:
+            raise
+        if entered == cfg.activation_code:
+            print("[JARVIS] Code korrekt – aktiviere.")
+            return
+        if entered:
+            print("[JARVIS] Falscher Code.")
 
 
 def _start_orb(log) -> subprocess.Popen | None:
