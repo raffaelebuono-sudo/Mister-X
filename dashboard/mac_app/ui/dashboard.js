@@ -208,13 +208,14 @@ async function initOrb() {
       composer.addPass(bloom);
     } catch (e) { composer = null; }
 
+    // Arc-Reactor-Palette: Cyan-Kern + Gold-Energie (Iron Man / Batman)
     const STATES = {
-      sleeping:  { color:0x3a2a8c, accent:0x6a4ad8, amp:0.07, freq:1.3, rot:0.06, bloom:0.55 },
-      listening: { color:0x2f7fff, accent:0x9be8ff, amp:0.14, freq:1.8, rot:0.22, bloom:0.95 },
-      thinking:  { color:0x5a6aff, accent:0xffffff, amp:0.20, freq:2.6, rot:0.9,  bloom:1.15 },
-      speaking:  { color:0x8fd8ff, accent:0xffffff, amp:0.26, freq:3.4, rot:0.4,  bloom:1.5  },
-      error:     { color:0xff3030, accent:0xff8080, amp:0.10, freq:5.0, rot:0.15, bloom:1.0  },
-      success:   { color:0x30ff90, accent:0xc0ffd0, amp:0.10, freq:1.6, rot:0.2,  bloom:1.0  },
+      sleeping:  { color:0x0b2740, accent:0xffc14d, amp:0.06, freq:1.2, rot:0.05, bloom:0.5 },
+      listening: { color:0x1f9fe0, accent:0x8fe8ff, amp:0.14, freq:1.8, rot:0.22, bloom:1.0 },
+      thinking:  { color:0x36c8ff, accent:0xffc14d, amp:0.22, freq:2.8, rot:0.95, bloom:1.25 },
+      speaking:  { color:0x7fe4ff, accent:0xffdc92, amp:0.27, freq:3.4, rot:0.4,  bloom:1.6  },
+      error:     { color:0xff2d2d, accent:0xff8a3d, amp:0.10, freq:5.0, rot:0.15, bloom:1.1  },
+      success:   { color:0x2fd8a0, accent:0xffc14d, amp:0.10, freq:1.6, rot:0.2,  bloom:1.05 },
     };
     let target = STATES.sleeping;
     let speechBoost = 0, speechUntil = 0;

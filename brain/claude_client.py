@@ -37,7 +37,13 @@ class ClaudeClient:
         cfg = get_config()
         self._client = Anthropic(api_key=cfg.anthropic_api_key)
         self._model = cfg.claude_model
-        self._max_tokens = cfg.claude_max_tokens
+        self._thinking_enabled = cfg.thinking_enabled
+        self._thinking_budget = cfg.thinking_budget
+        # Bei aktivem Thinking muss max_tokens > budget_tokens sein.
+        self._max_tokens = (
+            max(cfg.claude_max_tokens, cfg.thinking_budget + 1024)
+            if cfg.thinking_enabled else cfg.claude_max_tokens
+        )
         self._memory = memory if memory is not None else Memory(cfg.db_path)
         self._memory_pairs = cfg.memory_pairs
         self._tools = tools
@@ -48,7 +54,7 @@ class ClaudeClient:
         history.append({"role": "user", "content": user_text})
 
         for _ in range(MAX_TOOL_ITERATIONS):
-            response = self._client.messages.create(
+            kwargs = dict(
                 model=self._model,
                 max_tokens=self._max_tokens,
                 system=[
@@ -61,6 +67,13 @@ class ClaudeClient:
                 tools=self._tools.schemas() if self._tools else [],
                 messages=history,
             )
+            if self._thinking_enabled:
+                # Tiefere Lagebeurteilung vor der Antwort.
+                kwargs["thinking"] = {
+                    "type": "enabled",
+                    "budget_tokens": self._thinking_budget,
+                }
+            response = self._client.messages.create(**kwargs)
 
             # Assistenten-Antwort komplett (Text + Tool-Use-Blöcke) an die
             # Historie hängen, damit Claude sich auf eigene Tool-Aufrufe

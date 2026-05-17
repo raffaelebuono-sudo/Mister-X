@@ -152,8 +152,8 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
         core.speaker.say(briefing_text)
         core.bus.push_brain("speech_end", "")
     else:
-        core.bus.set_state(JarvisState.SPEAKING, "Ja?")
-        core.speaker.say("Ja, wie kann ich helfen?")
+        core.bus.set_state(JarvisState.SPEAKING, "Bereit, Operator.")
+        core.speaker.say("Ich höre, Operator.")
 
     while True:
         core.bus.set_state(JarvisState.LISTENING)
@@ -166,7 +166,7 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
         if _is_goodbye(command):
             log.info("Verabschiedung erkannt: %s", command)
             core.bus.set_state(JarvisState.SPEAKING)
-            core.speaker.say("Bis später.")
+            core.speaker.say("Verstanden. Ich gehe in Bereitschaft, Operator.")
             return
 
         log.info("Anfrage: %s", command)

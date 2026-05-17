@@ -23,6 +23,10 @@ class Config:
     anthropic_api_key: str
     claude_model: str = "claude-sonnet-4-6"
     claude_max_tokens: int = 1024
+    # Extended Thinking: JARVIS denkt vor komplexen Antworten sichtbar
+    # nach (bessere Lagebeurteilung). budget_tokens = Denk-Spielraum.
+    thinking_enabled: bool = True
+    thinking_budget: int = 2048
 
     # --- ElevenLabs (optional) ---
     elevenlabs_api_key: str | None = None
