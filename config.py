@@ -115,8 +115,8 @@ class Config:
     # --- Ops-Center: Wetter + Ambient-Daten ---
     # Standort fürs Wetter (Open-Meteo, kostenlos, kein Key).
     # Default: Wien. Eigene Koordinaten von z. B. latlong.net holen.
-    weather_lat: float = 48.2082
-    weather_lon: float = 16.3738
+    weather_lat: float = 48.2085   # Wien 1010, Innere Stadt (Stephansplatz)
+    weather_lon: float = 16.3721
     weather_city: str = "Wien"
     # Wie oft Wetter im Hintergrund aktualisiert wird (Sekunden).
     weather_refresh_seconds: int = 600
