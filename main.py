@@ -80,8 +80,8 @@ def main() -> int:
     wake = WakeWordDetector(core.listener) if cfg.activation_mode == "voice" else None
 
     if cfg.activation_mode == "code":
-        log.info("Bereit. Aktivierung per Code im Terminal.")
-        print("\n[JARVIS] Schläft. Zum Aktivieren den Code eingeben und Enter.")
+        log.info("Bereit. Entsperrung per Code im Dashboard.")
+        print("\n[JARVIS] Gesperrt. Code im Dashboard-Fenster eingeben.")
         print("[JARVIS] Mit Strg+C beenden.")
     else:
         log.info("Bereit. Wake-Phrase: '%s'", cfg.wake_phrase)
@@ -122,7 +122,12 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
     core.bus.set_state(JarvisState.SLEEPING)
 
     if cfg.activation_mode == "code":
-        _wait_for_code(cfg, log)
+        # Lock-Screen im Dashboard: blockiert, bis dort der Code
+        # eingegeben wird (kein Terminal mehr).
+        log.info("Gesperrt – warte auf Code-Eingabe im Dashboard.")
+        print("[JARVIS] Gesperrt. Code im Dashboard-Fenster eingeben.")
+        core.lock()
+        core.wait_for_unlock()
         source = "code"
     else:
         trigger = wake.wait_for_wake(on_chunk=_log_chunk)

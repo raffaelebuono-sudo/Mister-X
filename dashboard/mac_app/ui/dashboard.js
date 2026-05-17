@@ -39,10 +39,59 @@ function bootTick() {
     setTimeout(() => {
       bootEl.classList.add('hide');
       $('hud').classList.add('ready');
+      bootDone = true;
+      if (!unlocked) showLock();
     }, 500);
   }
 }
 bootTick();
+
+// ---------- Lock-Screen ----------
+let unlocked = false;
+let bootDone = false;
+let codeBuf = '';
+const lockEl = $('lock');
+const lockDots = $('lock-dots');
+const lockSub = $('lock-sub');
+
+function renderDots() {
+  lockDots.innerHTML = '';
+  const n = Math.max(codeBuf.length, 4);
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement('i');
+    if (i < codeBuf.length) d.className = 'on';
+    lockDots.appendChild(d);
+  }
+}
+function showLock() {
+  codeBuf = ''; renderDots();
+  lockSub.textContent = 'GESPERRT — CODE EINGEBEN';
+  lockEl.classList.remove('hide');
+}
+function hideLock() { lockEl.classList.add('hide'); }
+renderDots();
+
+$('lock-pad').addEventListener('click', (e) => {
+  const k = e.target?.dataset?.k;
+  if (!k) return;
+  if (k === 'clear') { codeBuf = ''; renderDots(); return; }
+  if (k === 'ok') {
+    if (codeBuf) sendUnlock(codeBuf);
+    return;
+  }
+  if (codeBuf.length < 12) { codeBuf += k; renderDots(); }
+});
+// Auch echte Tastatur erlauben
+window.addEventListener('keydown', (e) => {
+  if (lockEl.classList.contains('hide')) return;
+  if (e.key >= '0' && e.key <= '9' && codeBuf.length < 12) { codeBuf += e.key; renderDots(); }
+  else if (e.key === 'Backspace') { codeBuf = codeBuf.slice(0, -1); renderDots(); }
+  else if (e.key === 'Enter' && codeBuf) sendUnlock(codeBuf);
+});
+function sendUnlock(code) {
+  lockSub.textContent = 'PRÜFE …';
+  send({ type: 'unlock', code });
+}
 
 // ---------- Clock + Reticle-Ticks ----------
 const clockEl = $('clock');
@@ -78,7 +127,8 @@ async function initOrb() {
     // ---------- Three.js: Shader-Kugel ----------
     const canvas = $('orb-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // MacBook Air (lüfterlos): Pixelratio begrenzen spart viel GPU.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
@@ -149,7 +199,7 @@ async function initOrb() {
           gl_FragColor = vec4(col, 0.92);
         }`,
     });
-    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0, 24), coreMat);
+    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0, 12), coreMat);
     scene.add(core);
 
     const wire = new THREE.Mesh(
@@ -181,7 +231,7 @@ async function initOrb() {
     scene.add(glow);
 
     // Partikel-Schwarm
-    const PCOUNT = 480;
+    const PCOUNT = 220;
     const pPos = new Float32Array(PCOUNT * 3);
     for (let i = 0; i < PCOUNT; i++) {
       const r = 2.0 + Math.random() * 1.6;
@@ -360,6 +410,15 @@ function route(d) {
     case 'goals': onGoals(d); break;
     case 'stats': onStats(d); break;
     case 'news': onNews(d); break;
+    case 'locked': unlocked = false; if (bootDone) showLock(); break;
+    case 'unlocked':
+      unlocked = true; hideLock(); break;
+    case 'unlock_failed':
+      codeBuf = ''; renderDots();
+      lockSub.textContent = 'FALSCHER CODE';
+      lockEl.classList.add('shake');
+      setTimeout(() => lockEl.classList.remove('shake'), 450);
+      break;
   }
 }
 

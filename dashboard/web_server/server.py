@@ -77,8 +77,10 @@ def _build_app(core: "JarvisCore") -> FastAPI:
                 {"type": "tasks", "tasks": core.open_tasks_data()},
                 ensure_ascii=False,
             ))
-            # Ops-Center: vorhandene Kacheln sofort befüllen
+            # Lock-Status zuerst, damit das Dashboard sofort den
+            # richtigen Screen zeigt.
             for payload in (
+                {"type": "unlocked" if core.is_unlocked() else "locked"},
                 {"type": "weather", "weather": core.weather_snapshot()},
                 {"type": "agents", "agents": core.agents_status()},
                 {"type": "goals", "goals": core.goals_data()},
@@ -103,6 +105,9 @@ async def _on_client_message(core: "JarvisCore", raw: str) -> None:
     except json.JSONDecodeError:
         return
     kind = msg.get("type")
+    if kind == "unlock":
+        core.verify_unlock(msg.get("code") or "")
+        return
     if kind == "chat":
         text = (msg.get("content") or "").strip()
         speak = bool(msg.get("speak", False))

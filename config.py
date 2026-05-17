@@ -26,11 +26,18 @@ class Config:
     # Extended Thinking: JARVIS denkt vor komplexen Antworten sichtbar
     # nach (bessere Lagebeurteilung). budget_tokens = Denk-Spielraum.
     thinking_enabled: bool = True
-    thinking_budget: int = 2048
+    thinking_budget: int = 1024
 
-    # --- ElevenLabs (optional) ---
+    # --- ElevenLabs (Premium-Stimme, optional) ---
+    # Nur der API-Key reicht – wenn keine voice_id gesetzt ist, wählt
+    # JARVIS automatisch eine Stimme aus dem Konto. turbo_v2_5 ist
+    # schnell und kann Deutsch (gut für flüssige Reaktion).
     elevenlabs_api_key: str | None = None
     elevenlabs_voice_id: str | None = None
+    elevenlabs_model: str = "eleven_turbo_v2_5"
+    # macOS-Stimme erzwingen (z. B. eine geladene Premium-Siri-Stimme).
+    # Leer = automatische Auswahl der besten deutschen Stimme.
+    mac_voice: str | None = None
 
     # --- Whisper ---
     whisper_model: str = "base"   # tiny|base|small|medium|large
@@ -158,6 +165,7 @@ class Config:
             anthropic_api_key=api_key,
             elevenlabs_api_key=os.getenv("ELEVENLABS_API_KEY") or None,
             elevenlabs_voice_id=os.getenv("ELEVENLABS_VOICE_ID") or None,
+            mac_voice=os.getenv("JARVIS_MAC_VOICE") or None,
         )
         # Optionale .env-Overrides
         code = os.getenv("JARVIS_ACTIVATION_CODE", "").strip()

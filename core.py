@@ -63,6 +63,8 @@ class JarvisCore:
         self.listener = Listener()
         self.speaker = Speaker()
         self._lock = threading.Lock()
+        # Lock-Screen: Voice-Loop wartet hierauf, Dashboard entsperrt es.
+        self._unlock_event = threading.Event()
 
         # Agenten registrieren und Scheduler aufsetzen
         self._agents: dict[str, Agent] = {}
@@ -441,6 +443,29 @@ class JarvisCore:
 
     def mark_welcomed(self) -> None:
         self._last_welcome = datetime.now()
+
+    # --- Lock-Screen ---
+
+    def lock(self) -> None:
+        """Sperrt JARVIS und sagt dem Dashboard, den Lock-Screen zu zeigen."""
+        self._unlock_event.clear()
+        self.bus.publish({"type": "locked"})
+
+    def is_unlocked(self) -> bool:
+        return self._unlock_event.is_set()
+
+    def wait_for_unlock(self) -> None:
+        """Blockiert, bis im Dashboard der korrekte Code eingegeben wurde."""
+        self._unlock_event.wait()
+
+    def verify_unlock(self, code: str) -> bool:
+        """Vom WebSocket aufgerufen, wenn im Dashboard ein Code kommt."""
+        if (code or "").strip() == self.cfg.activation_code:
+            self._unlock_event.set()
+            self.bus.publish({"type": "unlocked"})
+            return True
+        self.bus.publish({"type": "unlock_failed"})
+        return False
 
     # --- Computer Use ---
 
