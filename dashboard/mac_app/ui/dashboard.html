@@ -5,25 +5,38 @@
   <title>JARVIS</title>
   <link rel="stylesheet" href="./dashboard.css">
   <script type="importmap">
-    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
   </script>
 </head>
 <body>
-  <!-- Animierter Grid-Hintergrund -->
   <div class="grid-bg"></div>
+  <div class="vignette"></div>
+  <div class="scanline"></div>
 
-  <div class="hud">
+  <!-- Boot-Sequenz -->
+  <div class="boot" id="boot">
+    <div class="boot-logo">◆</div>
+    <div class="boot-title">J A R V I S</div>
+    <div class="boot-lines" id="boot-lines"></div>
+    <div class="boot-bar"><i id="boot-bar-fill"></i></div>
+  </div>
 
-    <!-- Top-Header -->
+  <div class="hud" id="hud">
+
     <header class="hud-top">
       <div class="brand">
         <span class="brand-mark">◆</span>
         <span class="brand-name">JARVIS</span>
-        <span class="brand-version">v2.0</span>
+        <span class="brand-version">v2 · AUTONOM</span>
       </div>
       <div class="state-indicator">
         <span class="state-dot" id="state-dot"></span>
-        <span class="state-label" id="state-label">verbinde…</span>
+        <span class="state-label" id="state-label">VERBINDE…</span>
         <span class="state-message" id="state-message"></span>
       </div>
       <div class="health" id="health" title="Systemzustand">
@@ -33,7 +46,6 @@
       <div class="clock" id="clock">--:--:--</div>
     </header>
 
-    <!-- Linke Spalte: Quick Actions + Briefings -->
     <aside class="hud-left">
       <div class="panel">
         <h3>Schnellaktionen</h3>
@@ -42,49 +54,61 @@
         <button class="quick" data-action="briefings">Briefings vorlesen</button>
         <button class="quick" data-action="status">Mac-Status</button>
         <button class="quick" data-action="profile">Was weißt du über mich?</button>
+        <button class="quick" data-action="goals">Was verfolgst du?</button>
       </div>
-      <div class="panel">
+      <div class="panel grow">
         <h3>Briefings <span class="badge" id="briefings-count">0</span></h3>
         <ul id="briefings-list" class="briefings"></ul>
       </div>
     </aside>
 
-    <!-- Zentrale Bühne: die Kugel -->
     <section class="hud-center">
       <div class="orb-stage">
         <canvas id="orb-canvas"></canvas>
-        <div class="orb-ring ring-a"></div>
-        <div class="orb-ring ring-b"></div>
-        <div class="orb-ring ring-c"></div>
+        <!-- HUD-Overlay über der Kugel -->
+        <div class="orb-overlay">
+          <div class="corner tl"></div><div class="corner tr"></div>
+          <div class="corner bl"></div><div class="corner br"></div>
+          <svg class="reticle" viewBox="0 0 400 400" aria-hidden="true">
+            <circle class="r-ring r1" cx="200" cy="200" r="150"></circle>
+            <circle class="r-ring r2" cx="200" cy="200" r="178"></circle>
+            <g class="r-ticks" id="r-ticks"></g>
+          </svg>
+          <div class="readout tl-r" id="ro-state">CORE: INIT</div>
+          <div class="readout tr-r" id="ro-link">LINK: ––</div>
+          <div class="readout bl-r" id="ro-cpu">CPU ––</div>
+          <div class="readout br-r" id="ro-mode">MODE: STANDBY</div>
+        </div>
         <div class="orb-state-label" id="orb-state-label">SLEEPING</div>
       </div>
-      <!-- Chat unter der Kugel -->
       <div class="chat">
         <div class="messages" id="messages"></div>
         <form class="composer" id="composer" autocomplete="off">
-          <input type="text" id="chat-input" placeholder="Frage tippen oder &quot;Jarvis&quot; sagen…" />
+          <input type="text" id="chat-input" placeholder="Befehl eingeben…" />
           <label class="speak-toggle">
             <input type="checkbox" id="speak-checkbox" checked> vorlesen
           </label>
-          <button type="submit">Senden</button>
+          <button type="submit">SENDEN</button>
         </form>
       </div>
     </section>
 
-    <!-- Rechte Spalte: Brain + System + Tasks -->
     <aside class="hud-right">
-      <div class="panel">
+      <div class="panel grow">
         <h3>Brain Activity</h3>
         <ul id="brain-feed" class="brain-feed"></ul>
       </div>
       <div class="panel">
         <h3>System</h3>
         <div class="metric"><span>CPU</span><b id="cpu">–</b></div>
-        <div class="bar"><i id="cpu-bar"></i></div>
+        <canvas class="spark" id="cpu-spark" width="280" height="34"></canvas>
         <div class="metric"><span>RAM</span><b id="ram">–</b></div>
+        <canvas class="spark" id="ram-spark" width="280" height="34"></canvas>
         <div class="metric"><span>Akku</span><b id="battery">–</b></div>
         <div class="metric"><span>Festplatte</span><b id="disk">–</b></div>
         <div class="metric"><span>Uptime</span><b id="jarvis-uptime">–</b></div>
+        <!-- versteckt, von der Logik erwartet -->
+        <i id="cpu-bar" style="display:none"></i>
       </div>
       <div class="panel">
         <h3>Aufgaben <span class="badge" id="tasks-count">0</span></h3>
