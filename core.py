@@ -15,6 +15,7 @@ from typing import List, Optional
 from agents.agent import Agent
 from agents.builtin import DEFAULT_AGENTS
 from agents.scheduler import Scheduler
+from agents.goals import GoalStore
 from agents.store import BriefingsStore
 from brain.claude_client import ClaudeClient
 from brain.cloud_fallback import CloudFallbackBrain
@@ -40,6 +41,7 @@ class JarvisCore:
         self.tasks = TaskManager(cfg.db_path)
         self.briefings = BriefingsStore(cfg.db_path)
         self.profile = UserProfile(cfg.db_path)
+        self.goals = GoalStore(cfg.db_path)
 
         # Registry erfährt den Core, damit Tool-Aufrufe (z. B. add_task,
         # run_agent, list_briefings) die Dashboards informieren können.
@@ -75,6 +77,10 @@ class JarvisCore:
         # Welcome-Bookkeeping: Wann lief das letzte Begrüßungs-Briefing?
         self._last_welcome: Optional[datetime] = None
         self._welcome_cooldown = timedelta(minutes=cfg.welcome_cooldown_minutes)
+
+        # Executive-Bookkeeping: Tagesbudget für autonome Aktionen.
+        self._exec_budget_date: Optional[str] = None
+        self._exec_actions_today: int = 0
 
     # --- Anfragen verarbeiten ---
 
@@ -395,6 +401,112 @@ class JarvisCore:
                 spec=agent.schedule,
                 callback=lambda a=agent: self._scheduled_run(a),
             )
+        # Executive: eigenes Intervall mit hartem Tagesbudget.
+        if self.cfg.executive_enabled:
+            self.scheduler.add(
+                name="executive",
+                spec={"interval_minutes": int(self.cfg.executive_interval_hours * 60)},
+                callback=self._run_executive,
+            )
+
+    def _exec_budget_ok(self) -> bool:
+        today = datetime.now().strftime("%Y-%m-%d")
+        if self._exec_budget_date != today:
+            self._exec_budget_date = today
+            self._exec_actions_today = 0
+        return self._exec_actions_today < self.cfg.executive_daily_budget
+
+    def _run_executive(self) -> None:
+        """Eigenständiger Antrieb: entscheidet + tut die EINE beste Aktion."""
+        if not self._exec_budget_ok():
+            print("[Executive] Tagesbudget erschöpft – überspringe.")
+            return
+        agent = self._agents.get("executive")
+        if agent is None:
+            return
+        context = self._executive_context()
+        self.bus.push_brain("executive", "denkt nach …")
+        try:
+            result = agent.run(context)
+        except Exception as exc:
+            print(f"[Executive] Fehler: {exc}")
+            self.bus.push_brain("error", f"Executive: {exc}")
+            return
+        text = (result.get("content") or "").strip()
+        # 'PASS' = bewusst nichts getan; kein Briefing, kein Budgetverbrauch.
+        if text.upper().startswith("PASS"):
+            self.bus.push_brain("executive", "nichts Sinnvolles zu tun – pausiert")
+            return
+        self._exec_actions_today += 1
+        self.bus.publish({
+            "type": "briefing",
+            "briefing": result,
+            "unread_total": self.briefings.count_unread(),
+        })
+        self.bus.push_brain(
+            "executive_done",
+            f"Aktion {self._exec_actions_today}/{self.cfg.executive_daily_budget}: "
+            f"{text[:80]}",
+        )
+
+    def _executive_context(self) -> str:
+        """Baut den Entscheidungs-Kontext für den Executive-Agenten."""
+        goals = self.goals.active()
+        goals_txt = "\n".join(
+            f"  - [{g['id']}] {g['title']}"
+            + (f" – {g['detail']}" if g['detail'] else "")
+            + (f" (zuletzt bearbeitet: {g['last_worked_at']})"
+               if g['last_worked_at'] else " (noch nie bearbeitet)")
+            for g in goals
+        ) or "  (keine aktiven Ziele)"
+
+        tasks = self.open_tasks_data()
+        tasks_txt = "\n".join(
+            f"  - {t['title']}" + (f" (fällig {t['due_at']})" if t['due_at'] else "")
+            for t in tasks[:10]
+        ) or "  (keine offenen Aufgaben)"
+
+        facts = self.profile.all_facts()
+        facts_txt = "\n".join(f"  - {f['content']}" for f in facts[:20]) \
+            or "  (noch nichts über den Benutzer bekannt)"
+
+        recent = self.briefings.recent(5)
+        recent_txt = "\n".join(f"  - {b['title']}" for b in recent) \
+            or "  (keine)"
+
+        now = datetime.now().strftime("%A, %d.%m.%Y, %H:%M")
+        return (
+            f"Aktueller Kontext (Zeit: {now}).\n\n"
+            f"AKTIVE ZIELE:\n{goals_txt}\n\n"
+            f"OFFENE AUFGABEN:\n{tasks_txt}\n\n"
+            f"WAS JARVIS ÜBER DEN BENUTZER WEISS:\n{facts_txt}\n\n"
+            f"LETZTE BRIEFINGS:\n{recent_txt}\n\n"
+            "Entscheide jetzt die EINE sinnvollste proaktive Handlung "
+            "(oder 'PASS')."
+        )
+
+    # --- Ziele (Selbst-Steuerung) ---
+
+    def add_goal(self, title: str, detail: str = "", source: str = "user") -> str:
+        gid = self.goals.add(title, detail, source)
+        if gid is None:
+            return f"Dieses Ziel verfolge ich bereits: {title}"
+        return f"Neues Ziel gesetzt ({gid}): {title}"
+
+    def list_goals(self) -> str:
+        goals = self.goals.active()
+        if not goals:
+            return "Ich verfolge aktuell keine eigenständigen Ziele."
+        lines = ["Aktive Ziele:"]
+        for g in goals:
+            lines.append(f"  {g['id']}. {g['title']}"
+                         + (f" – {g['detail']}" if g['detail'] else ""))
+        return "\n".join(lines)
+
+    def complete_goal(self, goal_id: int) -> str:
+        return ("Ziel als erledigt markiert."
+                if self.goals.complete(int(goal_id))
+                else f"Kein aktives Ziel mit ID {goal_id}.")
 
     def _scheduled_run(self, agent: Agent) -> None:
         print(f"[Scheduler] Starte Agent '{agent.name}' "
@@ -424,3 +536,4 @@ class JarvisCore:
         self.tasks.close()
         self.briefings.close()
         self.profile.close()
+        self.goals.close()

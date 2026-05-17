@@ -156,6 +156,27 @@ nicht will, setzt `web_host = "127.0.0.1"` in `config.py`.
 | 13 | Autonomie-Fundament: Resilienz, Selbst-Überwachung | ✅ |
 | 14 | Lokales Fallback-Gehirn (Ollama, offline) | ✅ |
 | 15 | Multi-Cloud-Fallback (OpenAI/Gemini auf Claude-Niveau) | ✅ |
+| 16 | Selbst-Steuerung: Ziele + Executive-Agent | ✅ |
+
+## Selbst-Steuerung (Phase 16)
+
+JARVIS arbeitet eigenständig weiter, auch ohne Befehl:
+
+- **Ziele** (`goals`): fortlaufende Missionen statt einmaliger To-dos.
+  Per Sprache setzen: *„Jarvis, behalte KI-News im Auge"*,
+  *„recherchiere nach und nach gute E-Bike-Ladegeräte"*.
+- **Executive-Agent**: läuft alle paar Stunden (Default 3 h),
+  schaut auf Ziele + Profil + offene Aufgaben + letzte Briefings und
+  entscheidet selbst die EINE sinnvollste proaktive Handlung – oder
+  pausiert bewusst (`PASS`), wenn nichts ansteht. Kein Aktionismus.
+- **Harte Grenzen**: max. `executive_daily_budget` (Default 6)
+  autonome Aktionen pro Tag → keine Kosten-/Spam-Explosion. Niemals
+  destruktive Aktionen. Ergebnisse landen als Briefing und erreichen
+  dich erst beim nächsten Online-Kommen (kein Reinquatschen).
+- Fair: das am längsten vernachlässigte Ziel wird zuerst bedient.
+
+Einstellbar in `config.py`: `executive_enabled`,
+`executive_interval_hours`, `executive_daily_budget`.
 
 ## Gehirn-Fallback-Kette (Phase 14 + 15)
 

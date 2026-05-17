@@ -105,6 +105,13 @@ class Config:
     api_retries: int = 3
     api_retry_base_delay: float = 2.0      # Sekunden, verdoppelt sich je Versuch
 
+    # --- Selbst-Steuerung (Executive-Agent) ---
+    # JARVIS arbeitet eigenständig an den 'goals' weiter. Intervall +
+    # hartes Tagesbudget begrenzen Kosten und verhindern Spam.
+    executive_enabled: bool = True
+    executive_interval_hours: float = 3.0
+    executive_daily_budget: int = 6        # max. autonome Aktionen pro Tag
+
     # --- Multi-Cloud-Fallback (Claude-Niveau) ---
     # Greift, wenn Anthropic ausfällt, aber Internet noch geht.
     # Keys via .env: OPENAI_API_KEY / GEMINI_API_KEY.

@@ -313,6 +313,40 @@ class ToolRegistry:
                 ),
             ),
             _Tool(
+                name="add_goal",
+                description=(
+                    "Setzt ein langfristiges Ziel, das JARVIS eigenständig "
+                    "weiterverfolgt (anders als eine einmalige Aufgabe). "
+                    "Nutze dies, wenn der Benutzer sagt 'behalte X im Auge', "
+                    "'verfolge Y für mich', 'recherchiere nach und nach Z'."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string", "description": "Kurzer Ziel-Titel."},
+                        "detail": {"type": "string", "description": "Optional: Details/Kontext."},
+                    },
+                    "required": ["title"],
+                },
+                fn=lambda title, detail="": core.add_goal(title, detail, "user"),
+            ),
+            _Tool(
+                name="list_goals",
+                description="Listet die aktiven, eigenständig verfolgten Ziele.",
+                input_schema={"type": "object", "properties": {}},
+                fn=lambda: core.list_goals(),
+            ),
+            _Tool(
+                name="complete_goal",
+                description="Markiert ein eigenständig verfolgtes Ziel als erledigt.",
+                input_schema={
+                    "type": "object",
+                    "properties": {"goal_id": {"type": "integer"}},
+                    "required": ["goal_id"],
+                },
+                fn=lambda goal_id: core.complete_goal(int(goal_id)),
+            ),
+            _Tool(
                 name="computer_use",
                 description=(
                     "Steuert den Mac direkt, um eine Aufgabe auszuführen "
