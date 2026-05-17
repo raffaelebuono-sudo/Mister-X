@@ -12,6 +12,8 @@ Schema (eine Tabelle reicht):
 from __future__ import annotations
 
 import sqlite3
+
+from storage import open_db
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
@@ -34,10 +36,8 @@ class Memory:
     """Persistentes Gesprächs-Gedächtnis."""
 
     def __init__(self, db_path: Path) -> None:
-        db_path.parent.mkdir(parents=True, exist_ok=True)
         self._db_path = db_path
-        # check_same_thread=False: WebSocket-Server läuft in eigenem Thread.
-        self._conn = sqlite3.connect(str(db_path), check_same_thread=False)
+        self._conn = open_db(db_path)
         self._conn.executescript(SCHEMA)
         self._conn.commit()
 
