@@ -112,6 +112,17 @@ class Config:
     executive_interval_hours: float = 3.0
     executive_daily_budget: int = 6        # max. autonome Aktionen pro Tag
 
+    # --- Ops-Center: Wetter + Ambient-Daten ---
+    # Standort fürs Wetter (Open-Meteo, kostenlos, kein Key).
+    # Default: Wien. Eigene Koordinaten von z. B. latlong.net holen.
+    weather_lat: float = 48.2082
+    weather_lon: float = 16.3738
+    weather_city: str = "Wien"
+    # Wie oft Wetter im Hintergrund aktualisiert wird (Sekunden).
+    weather_refresh_seconds: int = 600
+    # Wie oft Agenten-/Ziele-/Statistik-Kacheln gepusht werden (Sekunden).
+    ambient_refresh_seconds: int = 30
+
     # --- Multi-Cloud-Fallback (Claude-Niveau) ---
     # Greift, wenn Anthropic ausfällt, aber Internet noch geht.
     # Keys via .env: OPENAI_API_KEY / GEMINI_API_KEY.

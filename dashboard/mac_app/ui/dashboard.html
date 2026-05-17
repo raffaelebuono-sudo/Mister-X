@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <title>JARVIS</title>
+  <title>JARVIS — Operations Center</title>
   <link rel="stylesheet" href="./dashboard.css">
   <script type="importmap">
     {
@@ -18,54 +18,85 @@
   <div class="vignette"></div>
   <div class="scanline"></div>
 
-  <!-- Boot-Sequenz -->
   <div class="boot" id="boot">
     <div class="boot-logo">◆</div>
     <div class="boot-title">J A R V I S</div>
+    <div class="boot-sub">OPERATIONS CENTER</div>
     <div class="boot-lines" id="boot-lines"></div>
     <div class="boot-bar"><i id="boot-bar-fill"></i></div>
   </div>
 
-  <div class="hud" id="hud">
+  <div class="ops" id="hud">
 
-    <header class="hud-top">
+    <!-- Topbar -->
+    <header class="ops-top">
       <div class="brand">
         <span class="brand-mark">◆</span>
         <span class="brand-name">JARVIS</span>
-        <span class="brand-version">v2 · AUTONOM</span>
+        <span class="brand-version">OPS · v2</span>
       </div>
       <div class="state-indicator">
         <span class="state-dot" id="state-dot"></span>
         <span class="state-label" id="state-label">VERBINDE…</span>
         <span class="state-message" id="state-message"></span>
       </div>
-      <div class="health" id="health" title="Systemzustand">
+      <div class="topstats">
+        <div class="ts-item"><b id="stat-conversations">0</b><span>GESPRÄCHE</span></div>
+        <div class="ts-item"><b id="stat-tasks">0</b><span>ERLEDIGT</span></div>
+        <div class="ts-item"><b id="stat-briefings">0</b><span>BRIEFINGS</span></div>
+        <div class="ts-item"><b id="stat-goals">0</b><span>ZIELE</span></div>
+        <div class="ts-item"><b id="stat-uptime">0h</b><span>UPTIME</span></div>
+      </div>
+      <div class="health" id="health">
         <span class="health-dot" id="health-dot"></span>
         <span class="health-label" id="health-label">online</span>
       </div>
       <div class="clock" id="clock">--:--:--</div>
     </header>
 
-    <aside class="hud-left">
-      <div class="panel">
-        <h3>Schnellaktionen</h3>
-        <button class="quick" data-action="news">News abrufen</button>
-        <button class="quick" data-action="weather">Wetter</button>
-        <button class="quick" data-action="briefings">Briefings vorlesen</button>
-        <button class="quick" data-action="status">Mac-Status</button>
-        <button class="quick" data-action="profile">Was weißt du über mich?</button>
-        <button class="quick" data-action="goals">Was verfolgst du?</button>
+    <!-- News-Ticker -->
+    <div class="ticker">
+      <span class="ticker-tag">LIVE</span>
+      <div class="ticker-track" id="news-ticker">
+        <span class="ticker-item">Warte auf Nachrichten…</span>
       </div>
+    </div>
+
+    <!-- Linke Spalte -->
+    <aside class="ops-left">
+      <div class="panel weather" id="weather-panel">
+        <h3>Wetter <span id="weather-city" class="badge-soft">–</span></h3>
+        <div class="w-main">
+          <span class="w-icon" id="w-icon">•</span>
+          <span class="w-temp" id="w-temp">––°</span>
+        </div>
+        <div class="w-desc" id="w-desc">keine Daten</div>
+        <div class="w-grid">
+          <div><span>Gefühlt</span><b id="w-feels">–</b></div>
+          <div><span>Wind</span><b id="w-wind">–</b></div>
+          <div><span>Feuchte</span><b id="w-hum">–</b></div>
+        </div>
+        <div class="w-fc">
+          <div><span>Heute</span><b id="w-today">–</b></div>
+          <div><span>Morgen</span><b id="w-tomorrow">–</b></div>
+        </div>
+      </div>
+
       <div class="panel grow">
-        <h3>Briefings <span class="badge" id="briefings-count">0</span></h3>
-        <ul id="briefings-list" class="briefings"></ul>
+        <h3>Agenten</h3>
+        <ul id="agents-grid" class="agents"></ul>
+      </div>
+
+      <div class="panel">
+        <h3>Ziele <span class="badge" id="goals-count">0</span></h3>
+        <ul id="goals-list" class="goals"></ul>
       </div>
     </aside>
 
-    <section class="hud-center">
+    <!-- Zentrum -->
+    <section class="ops-center">
       <div class="orb-stage">
         <canvas id="orb-canvas"></canvas>
-        <!-- HUD-Overlay über der Kugel -->
         <div class="orb-overlay">
           <div class="corner tl"></div><div class="corner tr"></div>
           <div class="corner bl"></div><div class="corner br"></div>
@@ -93,22 +124,22 @@
       </div>
     </section>
 
-    <aside class="hud-right">
-      <div class="panel grow">
-        <h3>Brain Activity</h3>
-        <ul id="brain-feed" class="brain-feed"></ul>
-      </div>
+    <!-- Rechte Spalte -->
+    <aside class="ops-right">
       <div class="panel">
         <h3>System</h3>
         <div class="metric"><span>CPU</span><b id="cpu">–</b></div>
-        <canvas class="spark" id="cpu-spark" width="280" height="34"></canvas>
+        <canvas class="spark" id="cpu-spark" width="300" height="32"></canvas>
         <div class="metric"><span>RAM</span><b id="ram">–</b></div>
-        <canvas class="spark" id="ram-spark" width="280" height="34"></canvas>
+        <canvas class="spark" id="ram-spark" width="300" height="32"></canvas>
         <div class="metric"><span>Akku</span><b id="battery">–</b></div>
-        <div class="metric"><span>Festplatte</span><b id="disk">–</b></div>
+        <div class="metric"><span>Disk</span><b id="disk">–</b></div>
         <div class="metric"><span>Uptime</span><b id="jarvis-uptime">–</b></div>
-        <!-- versteckt, von der Logik erwartet -->
         <i id="cpu-bar" style="display:none"></i>
+      </div>
+      <div class="panel grow">
+        <h3>Brain Activity</h3>
+        <ul id="brain-feed" class="brain-feed"></ul>
       </div>
       <div class="panel">
         <h3>Aufgaben <span class="badge" id="tasks-count">0</span></h3>
@@ -117,6 +148,10 @@
           <input type="text" id="new-task" placeholder="Neue Aufgabe…">
           <button type="submit">+</button>
         </form>
+      </div>
+      <div class="panel">
+        <h3>Briefings <span class="badge" id="briefings-count">0</span></h3>
+        <ul id="briefings-list" class="briefings"></ul>
       </div>
     </aside>
 

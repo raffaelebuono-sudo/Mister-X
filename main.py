@@ -198,19 +198,37 @@ def _is_goodbye(text: str) -> bool:
 
 def _system_monitor_loop(core: JarvisCore, stop_flag: threading.Event) -> None:
     log = jarvis_logger.get("monitor")
-    heartbeat = 0
+    secs = 0.0
+    last_weather = -1e9
+    last_ambient = -1e9
     while not stop_flag.wait(SYSTEM_STATS_INTERVAL):
         try:
             core.bus.push_system(system_monitor.get_status())
             core.bus.publish({"type": "health", "health": core.health.status()})
-            # Alle ~60s ein Heartbeat ins Log – Beleg, dass JARVIS lebt
-            # (wichtig im Daemon-Modus zur Diagnose).
-            heartbeat += 1
-            if heartbeat >= 30:
-                heartbeat = 0
+
+            secs += SYSTEM_STATS_INTERVAL
+
+            # Heartbeat ~alle 60s ins Log
+            if secs - getattr(_system_monitor_loop, "_hb", -1e9) >= 60:
+                _system_monitor_loop._hb = secs
                 h = core.health.status()
                 log.info("Heartbeat – online=%s api_ok=%s degraded=%s",
                          h["online"], h["api_ok"], h["degraded"])
+
+            # Wetter selten aktualisieren (teurer HTTP-Call)
+            if secs - last_weather >= core.cfg.weather_refresh_seconds:
+                last_weather = secs
+                w = core.refresh_weather()
+                if w:
+                    core.bus.publish({"type": "weather", "weather": w})
+
+            # Ambient-Kacheln: Agenten, Ziele, Stats, News-Ticker
+            if secs - last_ambient >= core.cfg.ambient_refresh_seconds:
+                last_ambient = secs
+                core.bus.publish({"type": "agents", "agents": core.agents_status()})
+                core.bus.publish({"type": "goals", "goals": core.goals_data()})
+                core.bus.publish({"type": "stats", "stats": core.daily_stats()})
+                core.bus.publish({"type": "news", "news": core.recent_news()})
         except Exception as exc:
             # System-Monitor sollte den Voice-Loop nie hart fail lassen.
             log.warning("System-Monitor-Fehler: %s", exc)

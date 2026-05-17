@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
-from tools import mac_control, system_inspect, system_monitor, web_search
+from tools import mac_control, system_inspect, system_monitor, weather, web_search
 
 if TYPE_CHECKING:  # nur für Type-Checker, keine Laufzeit-Abhängigkeit
     from core import JarvisCore
@@ -151,6 +151,20 @@ class ToolRegistry:
                 ),
                 input_schema={"type": "object", "properties": {}},
                 fn=lambda: system_monitor.get_status_text(),
+            ),
+            _Tool(
+                name="weather",
+                description=(
+                    "Aktuelles Wetter + Vorschau für heute und morgen am "
+                    "konfigurierten Standort. Kostenlos via Open-Meteo, "
+                    "kein API-Key nötig. Nutze dies für Wetterfragen "
+                    "statt der Web-Suche."
+                ),
+                input_schema={"type": "object", "properties": {}},
+                fn=lambda: weather.get_weather_text(
+                    core.cfg.weather_lat, core.cfg.weather_lon,
+                    core.cfg.weather_city,
+                ),
             ),
             _Tool(
                 name="top_processes",

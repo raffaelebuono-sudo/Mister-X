@@ -157,6 +157,25 @@ nicht will, setzt `web_host = "127.0.0.1"` in `config.py`.
 | 14 | Lokales Fallback-Gehirn (Ollama, offline) | ✅ |
 | 15 | Multi-Cloud-Fallback (OpenAI/Gemini auf Claude-Niveau) | ✅ |
 | 16 | Selbst-Steuerung: Ziele + Executive-Agent | ✅ |
+| 17 | Operations Center: Wetter, News-Ticker, Agenten-Grid | ✅ |
+
+## Operations Center (Phase 17)
+
+Das Dashboard ist jetzt ein echtes Lagezentrum mit Live-Kacheln:
+
+- **Wetter** (Open-Meteo, kostenlos, kein API-Key) – aktuell + heute/
+  morgen, Standort in `config.py` (`weather_lat/lon/city`, Default Wien).
+  Auch als Tool `weather` für gesprochene Wetterfragen.
+- **News-Ticker** – laufende Schlagzeilen aus den News-Agenten.
+- **Agenten-Grid** – alle Hintergrund-Agenten mit Live/Idle-Status
+  und letztem Lauf.
+- **Ziele-Tracker** – was der Executive gerade eigenständig verfolgt.
+- **Tages-Statistiken** in der Topbar – Gespräche, erledigte Aufgaben,
+  offene Briefings, aktive Ziele, Uptime.
+- Backend pusht Wetter alle 10 min, restliche Kacheln alle 30 s.
+
+Einstellbar in `config.py`: `weather_refresh_seconds`,
+`ambient_refresh_seconds`.
 
 ## Selbst-Steuerung (Phase 16)
 

@@ -82,12 +82,87 @@ class JarvisCore:
         self._exec_budget_date: Optional[str] = None
         self._exec_actions_today: int = 0
 
+        # Ops-Center-Bookkeeping
+        self._started_at = datetime.now()
+        self._weather: Optional[dict] = None
+        self._stats_date: Optional[str] = None
+        self._conversations_today: int = 0
+        self._tasks_done_today: int = 0
+
+    def _roll_stats_day(self) -> None:
+        today = datetime.now().strftime("%Y-%m-%d")
+        if self._stats_date != today:
+            self._stats_date = today
+            self._conversations_today = 0
+            self._tasks_done_today = 0
+
+    # --- Ops-Center-Daten ---
+
+    def refresh_weather(self) -> Optional[dict]:
+        from tools import weather as weather_mod
+        w = weather_mod.get_weather(
+            self.cfg.weather_lat, self.cfg.weather_lon, self.cfg.weather_city,
+        )
+        if w:
+            self._weather = w
+        return self._weather
+
+    def weather_snapshot(self) -> Optional[dict]:
+        return self._weather
+
+    def agents_status(self) -> list:
+        jobs = {j["name"]: j for j in self.scheduler.list_jobs()}
+        out = []
+        for name, agent in self._agents.items():
+            job = jobs.get(name)
+            last = job["last_run"] if job else None
+            out.append({
+                "name": name,
+                "description": agent.description,
+                "scheduled": agent.schedule is not None or name == "executive",
+                "last_run": last.isoformat(timespec="seconds") if last else None,
+            })
+        return out
+
+    def goals_data(self) -> list:
+        return self.goals.active()
+
+    def daily_stats(self) -> dict:
+        self._roll_stats_day()
+        up = datetime.now() - self._started_at
+        h, rem = divmod(int(up.total_seconds()), 3600)
+        m = rem // 60
+        return {
+            "conversations_today": self._conversations_today,
+            "tasks_done_today": self._tasks_done_today,
+            "briefings_unread": self.briefings.count_unread(),
+            "goals_active": len(self.goals.active()),
+            "uptime": f"{h}h {m}m",
+        }
+
+    def recent_news(self, limit: int = 8) -> list:
+        """Schlagzeilen aus News-Agenten-Briefings für den Ticker."""
+        items = self.briefings.recent(40)
+        news_agents = ("news_watcher", "morning_briefing")
+        out = []
+        for b in items:
+            if b["agent"] in news_agents:
+                line = (b.get("content") or b.get("title") or "").strip()
+                line = line.replace("\n", " ")
+                if line:
+                    out.append(line[:200])
+            if len(out) >= limit:
+                break
+        return out
+
     # --- Anfragen verarbeiten ---
 
     def process_text(self, text: str, *, speak: bool) -> str:
         text = text.strip()
         if not text:
             return ""
+        self._roll_stats_day()
+        self._conversations_today += 1
         with self._lock:
             self.bus.push_chat("user", text)
             self.bus.push_brain("thinking", f"verarbeite: {text[:60]}")
@@ -295,6 +370,8 @@ class JarvisCore:
 
     def complete_task(self, task_id: int) -> str:
         result = self.tasks.complete(task_id)
+        self._roll_stats_day()
+        self._tasks_done_today += 1
         self._publish_tasks()
         return result
 

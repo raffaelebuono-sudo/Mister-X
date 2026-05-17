@@ -77,6 +77,15 @@ def _build_app(core: "JarvisCore") -> FastAPI:
                 {"type": "tasks", "tasks": core.open_tasks_data()},
                 ensure_ascii=False,
             ))
+            # Ops-Center: vorhandene Kacheln sofort befüllen
+            for payload in (
+                {"type": "weather", "weather": core.weather_snapshot()},
+                {"type": "agents", "agents": core.agents_status()},
+                {"type": "goals", "goals": core.goals_data()},
+                {"type": "stats", "stats": core.daily_stats()},
+                {"type": "news", "news": core.recent_news()},
+            ):
+                await client.send(json.dumps(payload, ensure_ascii=False))
             while True:
                 raw = await websocket.receive_text()
                 await _on_client_message(core, raw)

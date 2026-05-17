@@ -342,6 +342,88 @@ function route(d) {
     case 'briefing': onBriefing(d); break;
     case 'activate': onActivate(d); break;
     case 'health': onHealth(d); break;
+    case 'weather': onWeather(d); break;
+    case 'agents': onAgents(d); break;
+    case 'goals': onGoals(d); break;
+    case 'stats': onStats(d); break;
+    case 'news': onNews(d); break;
+  }
+}
+
+function onWeather({ weather }) {
+  if (!weather) return;
+  const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+  set('weather-city', weather.city || '–');
+  set('w-icon', weather.icon || '•');
+  set('w-temp', (weather.temp ?? '––') + '°');
+  set('w-desc', weather.desc || '');
+  set('w-feels', (weather.feels ?? '–') + '°');
+  set('w-wind', (weather.wind ?? '–') + ' km/h');
+  set('w-hum', (weather.humidity ?? '–') + '%');
+  if (weather.today) set('w-today',
+    `${weather.today.icon} ${weather.today.min}–${weather.today.max}°`);
+  if (weather.tomorrow) set('w-tomorrow',
+    `${weather.tomorrow.icon} ${weather.tomorrow.min}–${weather.tomorrow.max}°`);
+}
+
+function onAgents({ agents }) {
+  const el = $('agents-grid'); if (!el) return;
+  el.innerHTML = '';
+  const now = Date.now();
+  for (const a of agents) {
+    const li = document.createElement('li');
+    const last = a.last_run ? new Date(a.last_run) : null;
+    const recent = last && (now - last.getTime()) < 6 * 3600 * 1000;
+    li.className = recent ? 'live' : 'idle';
+    const dot = document.createElement('span'); dot.className = 'dot';
+    const nm = document.createElement('span'); nm.className = 'a-name';
+    nm.textContent = a.description || a.name;
+    const wn = document.createElement('span'); wn.className = 'a-when';
+    wn.textContent = last ? shortT(a.last_run) : (a.scheduled ? 'geplant' : '–');
+    li.append(dot, nm, wn);
+    el.appendChild(li);
+  }
+}
+
+function onGoals({ goals }) {
+  const el = $('goals-list'); if (!el) return;
+  const cnt = $('goals-count'); if (cnt) cnt.textContent = goals.length;
+  el.innerHTML = '';
+  if (!goals.length) {
+    const li = document.createElement('li'); li.className = 'empty';
+    li.textContent = 'Keine aktiven Ziele.'; el.appendChild(li); return;
+  }
+  for (const g of goals) {
+    const li = document.createElement('li');
+    li.textContent = g.title;
+    if (g.detail) {
+      const d = document.createElement('span');
+      d.className = 'g-detail'; d.textContent = g.detail;
+      li.appendChild(d);
+    }
+    el.appendChild(li);
+  }
+}
+
+function onStats({ stats }) {
+  const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+  set('stat-conversations', stats.conversations_today ?? 0);
+  set('stat-tasks', stats.tasks_done_today ?? 0);
+  set('stat-briefings', stats.briefings_unread ?? 0);
+  set('stat-goals', stats.goals_active ?? 0);
+  set('stat-uptime', stats.uptime ?? '0h');
+}
+
+function onNews({ news }) {
+  const el = $('news-ticker'); if (!el) return;
+  if (!news || !news.length) return;
+  // Inhalt doppeln für nahtlosen Endlos-Lauf
+  el.innerHTML = '';
+  const items = [...news, ...news];
+  for (const n of items) {
+    const s = document.createElement('span');
+    s.className = 'ticker-item'; s.textContent = n;
+    el.appendChild(s);
   }
 }
 
