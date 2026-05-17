@@ -120,14 +120,16 @@ def _voice_iteration(cfg, core: JarvisCore, wake: WakeWordDetector, log) -> None
     # Dashboard sofort nach vorne holen
     core.bus.push_activate(source)
 
-    # Bei Klatschen: kein "Ja?" – stattdessen direkt das Welcome-Briefing
-    # (Zeit, Wetter, System, ungelesene Briefings, offene Aufgaben).
-    if source == "clap":
+    # Beim "Online-Kommen" (Klatschen oder "Jarvis") ein Welcome-Briefing –
+    # aber nur wenn die letzte Begrüßung lange genug her ist. Wenn du
+    # gerade aktiv mit ihm redest, kommt nur ein kurzes "Ja?".
+    if core.should_welcome():
+        core.mark_welcomed()
         core.bus.set_state(JarvisState.THINKING, "Welcome-Briefing …")
         try:
             briefing_text = core.run_agent(
                 "welcome_briefing",
-                "Erstelle das Sofort-Briefing für den Benutzer.",
+                "Erstelle das Sofort-Briefing mit nur den neuen Informationen.",
             )
         except Exception as exc:
             log.exception("Welcome-Briefing fehlgeschlagen: %s", exc)

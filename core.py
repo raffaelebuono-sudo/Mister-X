@@ -9,7 +9,7 @@ Tipp- und Sprach-Eingaben absolut gleichberechtigt sind.
 from __future__ import annotations
 
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from agents.agent import Agent
@@ -56,6 +56,10 @@ class JarvisCore:
 
         # Computer-Use-Agent (lazy initialisiert, da pyautogui Permissions braucht)
         self._computer_agent = None
+
+        # Welcome-Bookkeeping: Wann lief das letzte Begrüßungs-Briefing?
+        self._last_welcome: Optional[datetime] = None
+        self._welcome_cooldown = timedelta(minutes=cfg.welcome_cooldown_minutes)
 
     # --- Anfragen verarbeiten ---
 
@@ -244,6 +248,17 @@ class JarvisCore:
 
     def mark_all_briefings_read(self) -> int:
         return self.briefings.mark_all_read()
+
+    # --- Welcome-Logik ---
+
+    def should_welcome(self) -> bool:
+        """True, wenn die letzte Begrüßung lang genug her ist (oder noch nie war)."""
+        if self._last_welcome is None:
+            return True
+        return (datetime.now() - self._last_welcome) >= self._welcome_cooldown
+
+    def mark_welcomed(self) -> None:
+        self._last_welcome = datetime.now()
 
     # --- Computer Use ---
 

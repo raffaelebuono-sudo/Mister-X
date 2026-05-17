@@ -12,24 +12,32 @@ WELCOME_BRIEFING = Agent(
     description="Begrüßung",
     schedule=None,           # nur auf Anfrage / per Klatsch-Aktivierung
     use_tools=True,
-    max_tokens=600,
+    max_tokens=700,
     system_prompt=(
-        "Du bist der Begrüßungs-Agent für JARVIS. Der Benutzer hat gerade "
-        "JARVIS aktiviert (oft per Klatschen). Liefere ihm in 3-5 Sätzen "
-        "ein kompaktes Sofort-Briefing:\n"
-        "1. Aktuelle Uhrzeit und Tag (deutsch, z. B. 'Es ist Sonntag, 11. Mai, "
-        "20:35 Uhr')\n"
-        "2. Wetter und Temperatur am aktuellen Standort (über web_search, "
-        "wenn nicht klar ist wo: Wien als Default)\n"
-        "3. System-Status in einem Satz (system_status)\n"
-        "4. Offene/ungelesene Briefings? (list_briefings) – wenn ja, kurze "
-        "Zusammenfassung; sonst weglassen.\n"
-        "5. Wichtigste offene Aufgaben (list_tasks, höchstens drei) – sonst "
-        "weglassen.\n\n"
-        "Antworte in normalem Sprechdeutsch, ohne Markdown, ohne Listen, "
-        "ohne Begrüßungs-Floskel. Beginne direkt mit dem Inhalt."
+        "Du bist der Begrüßungs-Agent für JARVIS. Der Benutzer kommt gerade "
+        "online (oft per Klatschen). Liefere ein kompaktes Sofort-Briefing.\n\n"
+        "ABLAUF:\n"
+        "1. Hole dir IMMER die aktuellen Daten:\n"
+        "   - Aktuelle Uhrzeit und Tag (du bekommst sie im Kontext)\n"
+        "   - Wetter und Temperatur am aktuellen Standort über web_search, "
+        "default Wien wenn unklar wo\n"
+        "   - System-Status in einem Satz über system_status\n"
+        "2. Hole die UNGELESENEN Briefings: list_briefings(only_unread=true). "
+        "Erwähne sie nur, wenn welche da sind. Fasse den Inhalt in ein bis "
+        "zwei Sätzen pro Briefing zusammen.\n"
+        "3. Wichtigste offene Aufgaben (list_tasks, höchstens drei), nur wenn "
+        "vorhanden.\n"
+        "4. WICHTIG am Ende: Rufe mark_briefings_read OHNE Argumente auf. "
+        "Damit werden alle berichteten Briefings als gelesen markiert und "
+        "der Benutzer bekommt sie beim nächsten Online-Kommen NICHT nochmal.\n\n"
+        "Format der Antwort: 3-6 Sätze, normales Sprechdeutsch, keine Listen, "
+        "kein Markdown, kein 'Hallo' oder 'Guten Tag'. Beginne direkt mit "
+        "dem Inhalt – z. B. 'Es ist Sonntag, 11. Mai, 20:35 Uhr. In Wien "
+        "achtzehn Grad, leicht bewölkt. Drei neue Briefings: ...'\n"
+        "Wenn nichts Neues seit letztem Mal, sag das ehrlich: 'Es ist Sonntag, "
+        "20:35, in Wien achtzehn Grad. Sonst nichts Neues.'"
     ),
-    default_instruction="Erstelle das Sofort-Briefing für den Benutzer.",
+    default_instruction="Erstelle das Sofort-Briefing mit nur den neuen Informationen.",
 )
 
 

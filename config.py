@@ -86,6 +86,12 @@ class Config:
     # um Fakten aus einem Gesprächs-Turn zu extrahieren.
     profile_extractor_model: str = "claude-haiku-4-5-20251001"
 
+    # --- Welcome-Briefing ---
+    # Jede Aktivierung triggert ein Briefing – aber innerhalb dieser
+    # Schutz-Zeit antwortet JARVIS nur kurz mit 'Ja?', damit er sich
+    # nicht wiederholt, wenn du gerade aktiv mit ihm redest.
+    welcome_cooldown_minutes: int = 5
+
     @classmethod
     def from_env(cls) -> "Config":
         api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
