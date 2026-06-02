@@ -196,6 +196,8 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 /* ---------- Tools-Leiste ---------- */
 .controls.tools { margin-top: 10px; flex-wrap: wrap; }
 .controls.tools button { font-size: 13px; padding: 9px 13px; }
+.opt { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #d9d6ff; cursor: pointer; }
+.opt input { width: auto; margin: 0; }
 
 /* ---------- Editor-Overlay ---------- */
 .overlay {

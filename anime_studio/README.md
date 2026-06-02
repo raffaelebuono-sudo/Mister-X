@@ -38,6 +38,19 @@ mit fortlaufender, zusammenhängender Handlung.
   gerendert – Titelkarte, Szenen mit Ken-Burns-Bewegung, weiche Übergänge,
   eingebrannte Untertitel und (mit ElevenLabs) gesprochene Stimmen. Per
   Browser herunterladbar. Nutzt das mitgelieferte `ffmpeg` (imageio-ffmpeg).
+- **Bewegte KI-Video-Clips 🎬 (optional)**: Mit `REPLICATE_API_TOKEN` wird pro
+  Szene ein echter, BEWEGTER KI-Clip erzeugt (Image-to-Video) statt eines
+  Standbilds mit Zoom. Beim Export aktivierbar. Langsam und kostenpflichtig.
+- **KI-Hintergrundmusik 🎵 (optional)**: Ebenfalls über Replicate (MusicGen)
+  wird je nach Stimmung der Folge ein Musiktrack erzeugt und leise unter die
+  Stimmen gemischt.
+
+> **Ehrlicher Hinweis zur Qualität:** Auch mit allen Optionen entsteht ein
+> beeindruckender *KI-Anime-Short / Trailer* – **kein** Anime auf
+> Netflix-Serien-Niveau. Das ist mit heutiger KI (lange, durchgehend
+> konsistente, broadcast-fertige Folgen) nicht erreichbar, und Netflix
+> lizenziert Inhalte von Studios statt sie hochladen zu lassen. Das Tool ist
+> ideal für Ideen, Storyboards, Pitch-Reels und Social-Media-Clips.
 - **Speicherung**: Serien werden lokal als JSON unter `data/` abgelegt.
 - **Demo-Modus**: Ohne API-Key läuft eine eingebaute Demo, damit du die Seite
   sofort testen kannst.
@@ -84,6 +97,7 @@ läuft.
 | Einfache Stimmen / Sprachausgabe | — (Browser, gratis) | Nein |
 | Profi-Stimmen | `ELEVENLABS_API_KEY` | Nur für Profi-Stimmen |
 | Video-Export (MP4) | — (`ffmpeg` ist mitgeliefert) | Nein |
+| Bewegte KI-Video-Clips + KI-Musik | `REPLICATE_API_TOKEN` | Nur für Clips/Musik |
 
 > **Hinweis zum Stil:** Bild-KIs blockieren meist Prompts, die einen lebenden
 > Künstler oder eine geschützte Marke namentlich nennen (z. B. „Eiichiro Oda",

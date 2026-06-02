@@ -23,10 +23,13 @@ from typing import Any
 from PIL import Image, ImageDraw, ImageFont
 
 from . import audio
+from . import clips
+from . import music
 
 BASE_DIR = Path(__file__).resolve().parent
 MEDIA_DIR = BASE_DIR / "data" / "media"
 IMAGES_DIR = BASE_DIR / "data" / "images"
+CLIPS_DIR = BASE_DIR / "data" / "clips"
 
 W, H = 1280, 720
 FPS = 25
@@ -215,14 +218,70 @@ def _make_clip(ffmpeg: str, bg: Path, overlay: Path, audio_path: Path | None,
     subprocess.run(cmd, check=True, capture_output=True)
 
 
-def build_episode_video(series: dict[str, Any], episode: dict[str, Any]) -> str | None:
+def _make_clip_from_video(ffmpeg: str, base_video: Path, overlay: Path,
+                          audio_path: Path | None, duration: float, out: Path) -> None:
+    """Wie _make_clip, nutzt aber einen bewegten KI-Clip als Grundlage
+    (wird auf die noetige Dauer geloopt) statt eines Standbilds mit Zoom."""
+    fade_out = max(0.0, duration - 0.4)
+    if audio_path:
+        inputs = ["-stream_loop", "-1", "-i", str(base_video), "-i", str(audio_path),
+                  "-loop", "1", "-i", str(overlay)]
+    else:
+        inputs = ["-stream_loop", "-1", "-i", str(base_video),
+                  "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
+                  "-loop", "1", "-i", str(overlay)]
+    filt = (
+        f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+        f"fps={FPS}[bg];"
+        f"[bg][2:v]overlay=0:0,"
+        f"fade=t=in:st=0:d=0.4,fade=t=out:st={fade_out:.2f}:d=0.4,"
+        f"format=yuv420p[v]"
+    )
+    cmd = [
+        ffmpeg, "-y", *inputs, "-t", f"{duration:.2f}",
+        "-filter_complex", filt, "-map", "[v]", "-map", "1:a", "-r", str(FPS),
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-profile:v", "high",
+        "-preset", "veryfast", "-c:a", "aac", "-ar", "44100", "-ac", "2",
+        "-b:a", "128k", str(out),
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
+
+
+def _mix_music(ffmpeg: str, video_in: Path, music_path: Path, out: Path) -> bool:
+    """Mischt Hintergrundmusik leise unter die vorhandene Tonspur."""
+    cmd = [
+        ffmpeg, "-y", "-i", str(video_in), "-stream_loop", "-1", "-i", str(music_path),
+        "-filter_complex",
+        "[1:a]volume=0.16,aresample=44100[m];"
+        "[0:a][m]amix=inputs=2:duration=first:dropout_transition=0[a]",
+        "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac",
+        "-ar", "44100", "-ac", "2", "-b:a", "160k", "-shortest", str(out),
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        return True
+    except subprocess.CalledProcessError as exc:  # pragma: no cover
+        print("[anime_studio] Musik-Mix-Fehler:",
+              (exc.stderr or b"").decode(errors="ignore")[-400:])
+        return False
+
+
+def _clip_file(web_path: str) -> Path | None:
+    rel = web_path.lstrip("/").split("/", 1)[-1]
+    f = CLIPS_DIR / rel
+    return f if f.exists() else None
+
+
+def build_episode_video(series: dict[str, Any], episode: dict[str, Any],
+                        use_clips: bool = False, use_music: bool = False) -> str | None:
     """Baut die Folge als MP4 und gibt den Web-Pfad zurueck (z.B. /media/..)."""
     ffmpeg = _ffmpeg_exe()
     if not ffmpeg:
         return None
 
     work = Path(tempfile.mkdtemp(prefix="anime_vid_"))
-    clips: list[Path] = []
+    clip_files: list[Path] = []
+    want_clips = use_clips and clips.available()
     try:
         # Titelkarte (Hintergrund-Gradient + feste Titel-Ebene)
         first_mood = (episode.get("scenes") or [{}])[0].get("mood", "episch")
@@ -232,7 +291,7 @@ def build_episode_video(series: dict[str, Any], episode: dict[str, Any]) -> str 
         _title_overlay(series, episode, tc_ov)
         tc_clip = work / "clip_title.mp4"
         _make_clip(ffmpeg, tc_bg, tc_ov, None, 2.6, 0, tc_clip)
-        clips.append(tc_clip)
+        clip_files.append(tc_clip)
 
         idx = 1
         for scene in episode.get("scenes", []):
@@ -241,7 +300,16 @@ def build_episode_video(series: dict[str, Any], episode: dict[str, Any]) -> str 
             items = dialogue or [{"speaker": "", "emotion": "",
                                   "text": scene.get("narration", "…")}]
             bg = work / f"bg_{idx}.png"
-            _base_image(scene).save(bg)  # Hintergrund (einmal pro Szene wiederverwendbar)
+            _base_image(scene).save(bg)  # Standbild (Grundlage / img2video-Quelle)
+
+            # Optional: bewegten KI-Clip fuer die Szene erzeugen
+            scene_video: Path | None = None
+            if want_clips:
+                web = scene.get("clip") or clips.scene_clip(series, scene, bg)
+                if web:
+                    scene["clip"] = web
+                    scene_video = _clip_file(web)
+
             for line in items:
                 text = line.get("text", "")
                 speaker = line.get("speaker", "")
@@ -258,25 +326,41 @@ def build_episode_video(series: dict[str, Any], episode: dict[str, Any]) -> str 
                         duration += 0.6  # kleine Pause am Ende
 
                 clip = work / f"clip_{idx}.mp4"
-                _make_clip(ffmpeg, bg, overlay, audio_path, duration, idx, clip)
-                clips.append(clip)
+                if scene_video:
+                    _make_clip_from_video(ffmpeg, scene_video, overlay,
+                                          audio_path, duration, clip)
+                else:
+                    _make_clip(ffmpeg, bg, overlay, audio_path, duration, idx, clip)
+                clip_files.append(clip)
                 idx += 1
 
         # Alle Clips zusammenfuegen (gleiche Codec-Parameter -> copy)
         listfile = work / "list.txt"
         listfile.write_text(
-            "\n".join(f"file '{c.as_posix()}'" for c in clips), encoding="utf-8"
+            "\n".join(f"file '{c.as_posix()}'" for c in clip_files), encoding="utf-8"
         )
         safe = "".join(c for c in series["id"] if c.isalnum() or c in "-_")
         out_dir = MEDIA_DIR / safe
         out_dir.mkdir(parents=True, exist_ok=True)
         out_name = f"folge{episode.get('number', 1)}_{uuid.uuid4().hex[:6]}.mp4"
         out_path = out_dir / out_name
+        concat_out = work / "concat.mp4" if use_music else out_path
         subprocess.run(
             [ffmpeg, "-y", "-f", "concat", "-safe", "0", "-i", str(listfile),
-             "-c", "copy", str(out_path)],
+             "-c", "copy", str(concat_out)],
             check=True, capture_output=True,
         )
+
+        # Optional: KI-Hintergrundmusik daruntermischen
+        if use_music and music.available():
+            track = music.generate(episode, duration=40)
+            if track and _mix_music(ffmpeg, concat_out, track, out_path):
+                pass
+            else:
+                shutil.copy(concat_out, out_path)
+        elif use_music:
+            shutil.copy(concat_out, out_path)
+
         return f"/media/{safe}/{out_name}"
     except subprocess.CalledProcessError as exc:  # pragma: no cover
         print("[anime_studio] ffmpeg-Fehler:",

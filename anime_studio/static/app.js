@@ -78,6 +78,16 @@ async function loadStatus() {
     state.imagesEnabled = !!s.images_enabled;
     state.voicesEnabled = !!s.voices_enabled;
     state.videoEnabled = !!s.video_enabled;
+    state.clipsEnabled = !!s.clips_enabled;
+    state.musicEnabled = !!s.music_enabled;
+    // Export-Optionen nur zeigen, wenn verfuegbar
+    const opts = $("exportOpts");
+    if (opts && (state.clipsEnabled || state.musicEnabled)) {
+      opts.style.display = "flex";
+      $("optClips").disabled = !state.clipsEnabled;
+      $("optMusic").disabled = !state.musicEnabled;
+      $("optHint").textContent = "(KI-Clips dauern und kosten extra)";
+    }
     const badge = $("modeBadge");
     const img = s.images_enabled ? " · 🎨 " + s.image_provider : " · 🎨 aus";
     if (s.demo_mode) {
@@ -568,13 +578,15 @@ $("btnExport").onclick = async () => {
     return;
   }
   const ep = currentEpisode();
+  const useClips = !!($("optClips") && $("optClips").checked);
+  const useMusic = !!($("optMusic") && $("optMusic").checked);
   const btn = $("btnExport");
   btn.disabled = true;
-  btn.textContent = "🎞️ rendert… (kann etwas dauern)";
+  btn.textContent = useClips ? "🎞️ rendert KI-Clips… (dauert)" : "🎞️ rendert…";
   try {
     const res = await api(
       `/api/series/${state.series.id}/episode/${ep.number}/export`,
-      { method: "POST" }
+      { method: "POST", body: JSON.stringify({ use_clips: useClips, use_music: useMusic }) }
     );
     ep.video = res.video;
     $("videoPlayer").src = res.video;

@@ -26,15 +26,19 @@ from . import generator
 from . import images
 from . import audio
 from . import video
+from . import clips as clips_mod
+from . import music as music_mod
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 STATIC_DIR = BASE_DIR / "static"
 IMAGES_DIR = DATA_DIR / "images"
 MEDIA_DIR = DATA_DIR / "media"
+CLIPS_DIR = DATA_DIR / "clips"
 DATA_DIR.mkdir(exist_ok=True)
 IMAGES_DIR.mkdir(exist_ok=True)
 MEDIA_DIR.mkdir(exist_ok=True)
+CLIPS_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Anime-Studio")
 
@@ -92,6 +96,11 @@ class SceneRegen(BaseModel):
     hint: str = ""
 
 
+class ExportOptions(BaseModel):
+    use_clips: bool = False
+    use_music: bool = False
+
+
 # --------------------------------------------------------------------------
 # API
 # --------------------------------------------------------------------------
@@ -106,6 +115,8 @@ def status() -> dict[str, Any]:
         "image_provider": images.provider(),
         "voices_enabled": audio.available(),
         "video_enabled": video.available(),
+        "clips_enabled": clips_mod.available(),
+        "music_enabled": music_mod.available(),
     }
 
 
@@ -295,13 +306,23 @@ def line_audio(series_id: str, number: int, data: SceneRegen) -> dict[str, Any]:
 
 
 @app.post("/api/series/{series_id}/episode/{number}/export")
-def export_video(series_id: str, number: int) -> dict[str, Any]:
-    """Rendert die Folge als MP4 und gibt den Web-Pfad zurueck."""
+def export_video(
+    series_id: str, number: int, opts: ExportOptions | None = None
+) -> dict[str, Any]:
+    """Rendert die Folge als MP4 und gibt den Web-Pfad zurueck.
+
+    opts.use_clips  -> bewegte KI-Video-Clips pro Szene (Replicate, langsam/teuer)
+    opts.use_music  -> KI-Hintergrundmusik je Stimmung (Replicate)
+    """
     if not video.available():
         raise HTTPException(status_code=400, detail="ffmpeg nicht verfuegbar.")
+    opts = opts or ExportOptions()
     series = _load(series_id)
     idx = _find_episode(series, number)
-    url = video.build_episode_video(series, series["episodes"][idx])
+    url = video.build_episode_video(
+        series, series["episodes"][idx],
+        use_clips=opts.use_clips, use_music=opts.use_music,
+    )
     if not url:
         raise HTTPException(status_code=502, detail="Video konnte nicht erstellt werden.")
     series["episodes"][idx]["video"] = url
@@ -315,6 +336,7 @@ def export_video(series_id: str, number: int) -> dict[str, Any]:
 
 app.mount("/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
+app.mount("/clips", StaticFiles(directory=str(CLIPS_DIR)), name="clips")
 
 @app.get("/")
 def index() -> FileResponse:
