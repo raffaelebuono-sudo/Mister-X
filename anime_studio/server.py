@@ -24,13 +24,17 @@ from pydantic import BaseModel
 
 from . import generator
 from . import images
+from . import audio
+from . import video
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 STATIC_DIR = BASE_DIR / "static"
 IMAGES_DIR = DATA_DIR / "images"
+MEDIA_DIR = DATA_DIR / "media"
 DATA_DIR.mkdir(exist_ok=True)
 IMAGES_DIR.mkdir(exist_ok=True)
+MEDIA_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Anime-Studio")
 
@@ -100,6 +104,8 @@ def status() -> dict[str, Any]:
         "model": generator.MODEL,
         "images_enabled": images.available(),
         "image_provider": images.provider(),
+        "voices_enabled": audio.available(),
+        "video_enabled": video.available(),
     }
 
 
@@ -132,8 +138,17 @@ def create_series(data: SeriesIn) -> dict[str, Any]:
         "art_style": data.art_style.strip() or images.DEFAULT_STYLE,
         "episodes": [],
     }
+    _apply_appearances(series)
     _save(series)
     return series
+
+
+def _apply_appearances(series: dict[str, Any]) -> None:
+    """Erzeugt fehlende Aussehensbeschreibungen und traegt sie ein."""
+    looks = generator.generate_appearances(series)
+    for c in series.get("characters", []):
+        if not c.get("appearance") and looks.get(c["name"]):
+            c["appearance"] = looks[c["name"]]
 
 
 @app.get("/api/series/{series_id}")
@@ -169,6 +184,7 @@ def create_episode(series_id: str, data: EpisodeIn) -> dict[str, Any]:
             )
             known.add(nc["name"].lower())
 
+    _apply_appearances(series)  # neue Figuren bekommen ein festes Aussehen
     _save(series)
     return {"episode": episode, "series": series}
 
@@ -241,11 +257,64 @@ def scene_image(
     return {"image": url, "scene_index": data.scene_index}
 
 
+@app.post("/api/series/{series_id}/episode/{number}/line-audio")
+def line_audio(series_id: str, number: int, data: SceneRegen) -> dict[str, Any]:
+    """Erzeugt (oder liefert) die Sprachaufnahme einer Dialogzeile.
+
+    Nutzt 'scene_index' und 'hint' (=Zeilenindex als Text) aus SceneRegen.
+    """
+    if not audio.available():
+        raise HTTPException(status_code=400, detail="Kein ELEVENLABS_API_KEY gesetzt.")
+    series = _load(series_id)
+    idx = _find_episode(series, number)
+    scenes = series["episodes"][idx].get("scenes", [])
+    if not (0 <= data.scene_index < len(scenes)):
+        raise HTTPException(status_code=400, detail="Ungueltige Szene.")
+    try:
+        line_index = int(data.hint or "0")
+    except ValueError:
+        line_index = 0
+    dialogue = scenes[data.scene_index].get("dialogue", [])
+    if not (0 <= line_index < len(dialogue)):
+        raise HTTPException(status_code=400, detail="Ungueltige Zeile.")
+    line = dialogue[line_index]
+    if line.get("audio"):
+        return {"audio": line["audio"]}
+    folder = MEDIA_DIR / "lines" / "".join(
+        c for c in series_id if c.isalnum() or c in "-_"
+    )
+    res = audio.synthesize_to_file(line.get("text", ""), line.get("speaker", ""), folder)
+    if not res:
+        raise HTTPException(status_code=502, detail="Sprachausgabe fehlgeschlagen.")
+    path, _ = res
+    url = "/media/" + str(path.relative_to(MEDIA_DIR)).replace(os.sep, "/")
+    line["audio"] = url
+    series["episodes"][idx]["scenes"][data.scene_index]["dialogue"][line_index] = line
+    _save(series)
+    return {"audio": url}
+
+
+@app.post("/api/series/{series_id}/episode/{number}/export")
+def export_video(series_id: str, number: int) -> dict[str, Any]:
+    """Rendert die Folge als MP4 und gibt den Web-Pfad zurueck."""
+    if not video.available():
+        raise HTTPException(status_code=400, detail="ffmpeg nicht verfuegbar.")
+    series = _load(series_id)
+    idx = _find_episode(series, number)
+    url = video.build_episode_video(series, series["episodes"][idx])
+    if not url:
+        raise HTTPException(status_code=502, detail="Video konnte nicht erstellt werden.")
+    series["episodes"][idx]["video"] = url
+    _save(series)
+    return {"video": url}
+
+
 # --------------------------------------------------------------------------
-# Statische Website + erzeugte Bilder
+# Statische Website + erzeugte Bilder/Videos
 # --------------------------------------------------------------------------
 
 app.mount("/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
+app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 
 @app.get("/")
 def index() -> FileResponse:

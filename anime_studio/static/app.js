@@ -12,6 +12,9 @@ const state = {
   autoTimer: null,
   typing: null,
   imagesEnabled: false, // ist ein Bild-Key gesetzt?
+  voicesEnabled: false, // ElevenLabs verfuegbar?
+  videoEnabled: false,  // ffmpeg/Video-Export verfuegbar?
+  audioEl: null,        // laufende Server-Audiowiedergabe
 };
 
 // Zeichenstil-Voreinstellungen (leer = Server-Standard: One-Piece-Look)
@@ -73,6 +76,8 @@ async function loadStatus() {
   try {
     const s = await api("/api/status");
     state.imagesEnabled = !!s.images_enabled;
+    state.voicesEnabled = !!s.voices_enabled;
+    state.videoEnabled = !!s.video_enabled;
     const badge = $("modeBadge");
     const img = s.images_enabled ? " · 🎨 " + s.image_provider : " · 🎨 aus";
     if (s.demo_mode) {
@@ -258,6 +263,10 @@ function renderScene() {
     img.src = scene.image;
     img.classList.remove("hidden");
     shade.classList.remove("hidden");
+    // Ken-Burns-Animation neu starten
+    img.classList.remove("kb");
+    void img.offsetWidth; // Reflow erzwingen
+    img.classList.add("kb");
   } else {
     img.classList.add("hidden");
     shade.classList.add("hidden");
@@ -371,6 +380,7 @@ function stopAutoplay() {
   state.autoplay = false;
   clearInterval(state.autoTimer);
   $("btnAuto").textContent = "▶ Autoplay";
+  if (typeof stopAudio === "function") stopAudio();
 }
 $("btnAuto").onclick = () => (state.autoplay ? stopAutoplay() : startAutoplay());
 
@@ -407,7 +417,13 @@ function voiceForSpeaker(name) {
   return { v, pitch, rate };
 }
 
-function speakLine(line) {
+function stopAudio() {
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  if (state.audioEl) { state.audioEl.pause(); state.audioEl = null; }
+}
+
+// Browser-Sprachausgabe (gratis, kein Key)
+function browserSpeak(line) {
   if (!window.speechSynthesis || !line || !line.text) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(line.text);
@@ -419,6 +435,32 @@ function speakLine(line) {
   speechSynthesis.speak(u);
 }
 
+// Spielt die aktuelle Zeile: ElevenLabs (falls Key) sonst Browser-Stimme
+async function speakLine(line) {
+  if (!line || !line.text) return;
+  stopAudio();
+  if (state.voicesEnabled) {
+    try {
+      let url = line.audio;
+      if (!url) {
+        const res = await api(
+          `/api/series/${state.series.id}/episode/${currentEpisode().number}/line-audio`,
+          { method: "POST", body: JSON.stringify(
+              { scene_index: state.sceneIndex, hint: String(state.lineIndex) }) }
+        );
+        url = res.audio;
+        line.audio = url;
+      }
+      state.audioEl = new Audio(url);
+      state.audioEl.play().catch(() => browserSpeak(line));
+      return;
+    } catch (e) {
+      // Fallback auf Browser-Stimme
+    }
+  }
+  browserSpeak(line);
+}
+
 function currentLine() {
   const sc = currentEpisode().scenes[state.sceneIndex];
   return sc ? sc.dialogue[state.lineIndex] : null;
@@ -427,7 +469,7 @@ function currentLine() {
 $("btnVoice").onclick = () => {
   voice.on = !voice.on;
   $("btnVoice").textContent = "🔊 Stimmen: " + (voice.on ? "an" : "aus");
-  if (!voice.on && window.speechSynthesis) speechSynthesis.cancel();
+  if (!voice.on) stopAudio();
   if (voice.on) speakLine(currentLine());
 };
 $("btnSpeak").onclick = () => speakLine(currentLine());
@@ -516,6 +558,39 @@ async function generateAllImages(epNumber) {
   hint.textContent = "✓ Bilder fertig.";
   renderScene();
 }
+
+// ---------------------------------------------------------------------------
+// Video-Export (MP4)
+// ---------------------------------------------------------------------------
+$("btnExport").onclick = async () => {
+  if (!state.videoEnabled) {
+    alert("Video-Export ist auf diesem Server nicht verfügbar (ffmpeg fehlt).");
+    return;
+  }
+  const ep = currentEpisode();
+  const btn = $("btnExport");
+  btn.disabled = true;
+  btn.textContent = "🎞️ rendert… (kann etwas dauern)";
+  try {
+    const res = await api(
+      `/api/series/${state.series.id}/episode/${ep.number}/export`,
+      { method: "POST" }
+    );
+    ep.video = res.video;
+    $("videoPlayer").src = res.video;
+    $("videoDownload").href = res.video;
+    $("videoOverlay").classList.remove("hidden");
+  } catch (e) {
+    alert("Video-Fehler: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🎞️ Als Video exportieren";
+  }
+};
+$("videoClose").onclick = () => {
+  $("videoPlayer").pause();
+  $("videoOverlay").classList.add("hidden");
+};
 
 // ---------------------------------------------------------------------------
 // Szenen-Editor

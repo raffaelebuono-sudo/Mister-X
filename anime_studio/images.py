@@ -76,10 +76,19 @@ def build_prompt(
         sp = line.get("speaker")
         if sp and sp not in speakers and sp != "???":
             speakers.append(sp)
-    roles = {c["name"]: c.get("role", "") for c in series.get("characters", [])}
-    chars_desc = ", ".join(
-        f"{n}" + (f" ({roles[n]})" if roles.get(n) else "") for n in speakers[:3]
-    )
+    chardb = {c["name"]: c for c in series.get("characters", [])}
+    # Aussehen einbeziehen -> konsistente Charaktere ueber alle Szenen
+    desc_parts = []
+    for n in speakers[:3]:
+        c = chardb.get(n, {})
+        look = c.get("appearance")
+        if look:
+            desc_parts.append(f"{n} ({look})")
+        elif c.get("role"):
+            desc_parts.append(f"{n} ({c['role']})")
+        else:
+            desc_parts.append(n)
+    chars_desc = "; ".join(desc_parts)
 
     parts = [
         f"Anime key visual. {style}.",

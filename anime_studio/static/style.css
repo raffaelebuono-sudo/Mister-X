@@ -124,8 +124,13 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 }
 .scene-img {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; z-index: 0; animation: fade .4s ease;
+  object-fit: cover; z-index: 0; transform-origin: center;
 }
+@keyframes kenburns {
+  from { transform: scale(1.02); }
+  to   { transform: scale(1.16); }
+}
+.scene-img.kb { animation: kenburns 14s ease-out forwards, fade .5s ease; }
 .scene-shade {
   position: absolute; inset: 0; z-index: 1;
   background: linear-gradient(to bottom, rgba(0,0,0,.15) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,.55) 100%);

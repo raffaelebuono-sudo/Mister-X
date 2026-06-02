@@ -320,3 +320,68 @@ def _generate_demo(
         },
         number,
     )
+
+
+# --------------------------------------------------------------------------
+# Charakter-Aussehen (fuer konsistente Bilder ueber alle Szenen)
+# --------------------------------------------------------------------------
+
+_APPEARANCE_SYSTEM = """\
+Du beschreibst das feste visuelle Aussehen von Anime-Charakteren fuer einen \
+Bild-Generator. Antworte AUSSCHLIESSLICH mit gueltigem JSON: ein Objekt, das \
+jedem Namen eine kurze, praegnante ENGLISCHE Aussehensbeschreibung zuordnet \
+(Haarfarbe/-stil, Augenfarbe, Hautton, typische Kleidung, Alter, besondere \
+Merkmale). Beispiel:
+{"Akira": "teenage boy, spiky black hair, golden eyes, red jacket, scar on cheek"}
+Keine Erklaerung, nur das JSON-Objekt.
+"""
+
+_DEMO_HAIR = ["spiky black", "long silver", "short blue", "wild red", "tied blonde", "messy brown"]
+_DEMO_EYES = ["golden", "emerald green", "crimson", "deep blue", "violet", "amber"]
+_DEMO_OUTFIT = ["a red captain's coat", "a blue school uniform", "light samurai armor",
+                "a green traveler's cloak", "a black combat outfit", "white robes"]
+
+
+def _demo_appearance(name: str) -> str:
+    h = sum(ord(c) for c in name)
+    return (
+        f"anime character, {_DEMO_HAIR[h % len(_DEMO_HAIR)]} hair, "
+        f"{_DEMO_EYES[(h // 3) % len(_DEMO_EYES)]} eyes, "
+        f"wearing {_DEMO_OUTFIT[(h // 7) % len(_DEMO_OUTFIT)]}"
+    )
+
+
+def generate_appearances(series: dict[str, Any]) -> dict[str, str]:
+    """Erzeugt feste Aussehensbeschreibungen fuer Charaktere ohne 'appearance'."""
+    missing = [c for c in series.get("characters", []) if not c.get("appearance")]
+    if not missing:
+        return {}
+    names = [c["name"] for c in missing]
+    result: dict[str, str] = {}
+    if _has_api_key():
+        try:
+            client = Anthropic()
+            roster = "\n".join(
+                f"- {c['name']} ({c.get('role', 'Charakter')})" for c in missing
+            )
+            msg = (
+                f"Serie: {series.get('title', '')} (Genre: {series.get('genre', '')}).\n"
+                f"Beschreibe das Aussehen dieser Charaktere:\n{roster}"
+            )
+            resp = client.messages.create(
+                model=MODEL,
+                max_tokens=1024,
+                system=_APPEARANCE_SYSTEM,
+                messages=[{"role": "user", "content": msg}],
+            )
+            raw = "".join(
+                b.text for b in resp.content if getattr(b, "type", "") == "text"
+            )
+            result = _extract_json(raw)
+        except Exception as exc:  # pragma: no cover
+            print(f"[anime_studio] Aussehen-Fehler, nutze Demo: {exc}")
+    # Luecken mit Demo fuellen
+    for name in names:
+        if not result.get(name):
+            result[name] = _demo_appearance(name)
+    return result

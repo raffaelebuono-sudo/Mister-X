@@ -26,6 +26,18 @@ mit fortlaufender, zusammenhängender Handlung.
   Folge werden die Bilder automatisch gezeichnet; einzelne Bilder lassen sich
   neu erzeugen. Beim Anlegen der Serie wählst du den **Zeichenstil**.
   Ohne Bild-Key bleibt der Stimmungs-Hintergrund erhalten.
+- **Konsistente Charaktere 🧍**: Jede Figur bekommt eine feste, generierte
+  Aussehensbeschreibung (Haare, Augen, Kleidung …), die in jeden Bild-Prompt
+  einfließt – so sehen Charaktere über alle Szenen ähnlich aus.
+- **Bewegung & Überblendungen 🎬**: Im Player zoomt/schwenkt das Bild sanft
+  (Ken-Burns-Effekt) mit weichen Übergängen.
+- **Profi-Stimmen (ElevenLabs) 🗣️**: Mit `ELEVENLABS_API_KEY` sprechen die
+  Charaktere mit natürlichen Stimmen (eine feste Stimme je Figur). Ohne Key
+  übernimmt die kostenlose Browser-Sprachausgabe.
+- **Video-Export (MP4) 🎞️**: Die ganze Folge wird zu einer echten Videodatei
+  gerendert – Titelkarte, Szenen mit Ken-Burns-Bewegung, weiche Übergänge,
+  eingebrannte Untertitel und (mit ElevenLabs) gesprochene Stimmen. Per
+  Browser herunterladbar. Nutzt das mitgelieferte `ffmpeg` (imageio-ffmpeg).
 - **Speicherung**: Serien werden lokal als JSON unter `data/` abgelegt.
 - **Demo-Modus**: Ohne API-Key läuft eine eingebaute Demo, damit du die Seite
   sofort testen kannst.
@@ -69,8 +81,9 @@ läuft.
 |----------|-----|----------|
 | Folgen/Szenen schreiben (Story-KI) | `ANTHROPIC_API_KEY` | **Ja** (sonst Demo) |
 | Echte Anime-Bilder pro Szene | `OPENAI_API_KEY` **oder** `GEMINI_API_KEY` | Nur für Bilder |
-| Stimmen / Sprachausgabe | — (Browser, gratis) | Nein |
-| Premium-Stimmen (später möglich) | `ELEVENLABS_API_KEY` | Nein |
+| Einfache Stimmen / Sprachausgabe | — (Browser, gratis) | Nein |
+| Profi-Stimmen | `ELEVENLABS_API_KEY` | Nur für Profi-Stimmen |
+| Video-Export (MP4) | — (`ffmpeg` ist mitgeliefert) | Nein |
 
 > **Hinweis zum Stil:** Bild-KIs blockieren meist Prompts, die einen lebenden
 > Künstler oder eine geschützte Marke namentlich nennen (z. B. „Eiichiro Oda",

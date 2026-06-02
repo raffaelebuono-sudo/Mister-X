@@ -101,6 +101,7 @@
               <button id="btnImage" class="ghost">🎨 Bild für Szene</button>
               <button id="btnRegen" class="ghost">🎲 Szene neu</button>
               <button id="btnEdit" class="ghost">✏️ Szene bearbeiten</button>
+              <button id="btnExport" class="ghost">🎞️ Als Video exportieren</button>
             </div>
             <div id="epMeta" class="ep-meta"></div>
           </div>
@@ -117,6 +118,20 @@
         </div>
       </div>
     </section>
+
+    <!-- ===== Video-Anzeige (Overlay) ===== -->
+    <div id="videoOverlay" class="overlay hidden">
+      <div class="modal">
+        <h2>Deine Anime-Folge als Video 🎞️</h2>
+        <div id="videoBody">
+          <video id="videoPlayer" controls style="width:100%;border-radius:12px;background:#000"></video>
+          <div class="modal-actions">
+            <a id="videoDownload" class="ghost" style="text-decoration:none;padding:12px 18px;border-radius:12px" download>⬇️ Herunterladen</a>
+            <button id="videoClose" class="primary" style="width:auto">Schließen</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ===== Szenen-Editor (Overlay) ===== -->
     <div id="editorOverlay" class="overlay hidden">

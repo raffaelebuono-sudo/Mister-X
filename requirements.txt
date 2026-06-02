@@ -15,3 +15,4 @@ Pillow>=10.0.0             # Computer Use: Bilder skalieren
 
 # Optional
 elevenlabs>=1.0.0          # Natürliche deutsche Stimme (sonst macOS 'say')
+imageio-ffmpeg>=0.4.9   # gebündeltes ffmpeg für Anime-Studio Video-Export
