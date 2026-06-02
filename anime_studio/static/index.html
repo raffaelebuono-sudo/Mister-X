@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anime-Studio · KI erstellt deine Anime-Folgen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">🌸 Anime<span>Studio</span></div>
+    <div id="modeBadge" class="badge">…</div>
+  </header>
+
+  <main id="app">
+
+    <!-- ===== Startansicht: Serie anlegen / auswaehlen ===== -->
+    <section id="view-home" class="view active">
+      <div class="hero">
+        <h1>Erschaffe deinen eigenen Anime ✨</h1>
+        <p>Gib einfach Stichworte zur Handlung ein – die KI macht daraus eine
+           komplette Folge mit Szenen, Charakteren und Dialogen.
+           Und das <strong>Folge für Folge</strong>.</p>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Neue Serie starten</h2>
+          <label>Titel der Serie
+            <input id="newTitle" placeholder="z. B. Schwerter des Mondes" />
+          </label>
+          <label>Genre
+            <input id="newGenre" placeholder="z. B. Fantasy, Action, Romanze" />
+          </label>
+          <label>Hauptcharaktere (mit Komma trennen, optional)
+            <input id="newChars" placeholder="z. B. Akira, Yuki, Meister Ren" />
+          </label>
+          <button id="btnCreate" class="primary">Serie erstellen →</button>
+        </div>
+
+        <div class="card">
+          <h2>Deine Serien</h2>
+          <ul id="seriesList" class="series-list"><li class="muted">Lade…</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Serienansicht: Folgen erstellen & ansehen ===== -->
+    <section id="view-series" class="view">
+      <button class="link-back" onclick="showHome()">← Zurück zur Übersicht</button>
+      <div class="series-head">
+        <h1 id="seriesTitle"></h1>
+        <span id="seriesGenre" class="chip"></span>
+      </div>
+
+      <div class="layout">
+        <aside class="sidebar">
+          <h3>Folgen</h3>
+          <ul id="episodeList" class="episode-list"></ul>
+
+          <div class="new-episode">
+            <h3>Neue Folge ✏️</h3>
+            <textarea id="epKeywords" rows="4"
+              placeholder="Was passiert in dieser Folge?&#10;z. B. Akira findet ein magisches Schwert, ein Verräter taucht auf, großer Kampf am Hafen"></textarea>
+            <button id="btnGenerate" class="primary">Folge generieren 🎬</button>
+            <p id="genHint" class="muted small"></p>
+          </div>
+        </aside>
+
+        <div class="stage">
+          <!-- Player -->
+          <div id="player" class="player hidden">
+            <div id="sceneBg" class="scene-bg">
+              <div class="scene-loc"><span id="sceneLocation"></span></div>
+              <div class="scene-center">
+                <div id="charAvatar" class="char-avatar"></div>
+                <div id="charName" class="char-name"></div>
+              </div>
+              <div id="narration" class="narration"></div>
+              <div id="dialogueBox" class="dialogue-box">
+                <div id="dlgSpeaker" class="dlg-speaker"></div>
+                <div id="dlgText" class="dlg-text"></div>
+              </div>
+            </div>
+            <div class="controls">
+              <button id="btnPrev">⟨ Zurück</button>
+              <span id="progress" class="progress"></span>
+              <button id="btnAuto" class="ghost">▶ Autoplay</button>
+              <button id="btnNext">Weiter ⟩</button>
+            </div>
+            <div id="epMeta" class="ep-meta"></div>
+          </div>
+
+          <div id="emptyStage" class="empty-stage">
+            <div class="big-emoji">🎞️</div>
+            <p>Wähle links eine Folge aus – oder erstelle deine erste Folge!</p>
+          </div>
+
+          <div id="loader" class="loader hidden">
+            <div class="spinner"></div>
+            <p>Die KI zeichnet deine Folge…</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
