@@ -90,6 +90,12 @@
               <button id="btnAuto" class="ghost">▶ Autoplay</button>
               <button id="btnNext">Weiter ⟩</button>
             </div>
+            <div class="controls tools">
+              <button id="btnVoice" class="ghost">🔊 Stimmen: aus</button>
+              <button id="btnSpeak" class="ghost">▶ Zeile vorlesen</button>
+              <button id="btnRegen" class="ghost">🎲 Szene neu</button>
+              <button id="btnEdit" class="ghost">✏️ Szene bearbeiten</button>
+            </div>
             <div id="epMeta" class="ep-meta"></div>
           </div>
 
@@ -105,6 +111,38 @@
         </div>
       </div>
     </section>
+
+    <!-- ===== Szenen-Editor (Overlay) ===== -->
+    <div id="editorOverlay" class="overlay hidden">
+      <div class="modal">
+        <h2>Szene bearbeiten ✏️</h2>
+        <label>Schauplatz
+          <input id="edLocation" />
+        </label>
+        <label>Stimmung
+          <select id="edMood">
+            <option value="ruhig">ruhig</option>
+            <option value="froehlich">fröhlich</option>
+            <option value="spannend">spannend</option>
+            <option value="traurig">traurig</option>
+            <option value="episch">episch</option>
+            <option value="romantisch">romantisch</option>
+            <option value="duester">düster</option>
+            <option value="geheimnisvoll">geheimnisvoll</option>
+          </select>
+        </label>
+        <label>Erzähltext
+          <textarea id="edNarration" rows="2"></textarea>
+        </label>
+        <h3>Dialog</h3>
+        <div id="edDialogue" class="ed-dialogue"></div>
+        <button id="edAddLine" class="ghost small">+ Zeile hinzufügen</button>
+        <div class="modal-actions">
+          <button id="edCancel" class="ghost">Abbrechen</button>
+          <button id="edSave" class="primary" style="width:auto">💾 Speichern</button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script src="/app.js"></script>

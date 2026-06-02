@@ -75,6 +75,15 @@ class EpisodeIn(BaseModel):
     keywords: str
 
 
+class EpisodeEdit(BaseModel):
+    episode: dict[str, Any]
+
+
+class SceneRegen(BaseModel):
+    scene_index: int
+    hint: str = ""
+
+
 # --------------------------------------------------------------------------
 # API
 # --------------------------------------------------------------------------
@@ -153,6 +162,48 @@ def create_episode(series_id: str, data: EpisodeIn) -> dict[str, Any]:
             )
             known.add(nc["name"].lower())
 
+    _save(series)
+    return {"episode": episode, "series": series}
+
+
+def _find_episode(series: dict[str, Any], number: int) -> int:
+    for i, ep in enumerate(series.get("episodes", [])):
+        if ep.get("number") == number:
+            return i
+    raise HTTPException(status_code=404, detail="Folge nicht gefunden.")
+
+
+@app.put("/api/series/{series_id}/episode/{number}")
+def update_episode(
+    series_id: str, number: int, data: EpisodeEdit
+) -> dict[str, Any]:
+    """Speichert manuell bearbeitete Szenen/Dialoge einer Folge."""
+    series = _load(series_id)
+    idx = _find_episode(series, number)
+    episode = generator._normalise(data.episode, number)
+    episode["keywords"] = series["episodes"][idx].get("keywords", "")
+    series["episodes"][idx] = episode
+    _save(series)
+    return {"episode": episode, "series": series}
+
+
+@app.post("/api/series/{series_id}/episode/{number}/regen-scene")
+def regen_scene(
+    series_id: str, number: int, data: SceneRegen
+) -> dict[str, Any]:
+    """Generiert eine einzelne Szene einer Folge neu (mit optionalem Hinweis)."""
+    series = _load(series_id)
+    idx = _find_episode(series, number)
+    episode = series["episodes"][idx]
+    scenes = episode.get("scenes", [])
+    if not (0 <= data.scene_index < len(scenes)):
+        raise HTTPException(status_code=400, detail="Ungueltige Szene.")
+    new_scene = generator.regenerate_scene(
+        series, episode, data.scene_index, data.hint
+    )
+    scenes[data.scene_index] = new_scene
+    episode["scenes"] = scenes
+    series["episodes"][idx] = episode
     _save(series)
     return {"episode": episode, "series": series}
 

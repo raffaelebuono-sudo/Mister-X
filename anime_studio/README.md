@@ -15,6 +15,12 @@ mit fortlaufender, zusammenhängender Handlung.
 - **Anime-Player**: Szenen mit stimmungsabhängigen Hintergründen,
   Charakter-Avataren und Dialog im Schreibmaschinen-Effekt. Mit Autoplay und
   Pfeiltasten-Steuerung (← → / Leertaste).
+- **Stimmen 🔊**: Die Charaktere sprechen ihre Dialoge (Sprachausgabe des
+  Browsers, **kein Key nötig**). Jeder Charakter bekommt eine eigene Tonhöhe.
+- **Szenen bearbeiten ✏️**: Schauplatz, Stimmung, Erzähltext und einzelne
+  Dialogzeilen lassen sich von Hand ändern, hinzufügen oder löschen.
+- **Szene neu generieren 🎲**: Einzelne Szenen per KI neu erzeugen – optional
+  mit einem Hinweis, wie sie anders werden soll.
 - **Speicherung**: Serien werden lokal als JSON unter `data/` abgelegt.
 - **Demo-Modus**: Ohne API-Key läuft eine eingebaute Demo, damit du die Seite
   sofort testen kannst.
@@ -51,6 +57,14 @@ ANIME_PORT=8800
 
 Oben rechts auf der Seite siehst du, ob die KI aktiv ist oder der Demo-Modus
 läuft.
+
+### Welcher Key wofür?
+
+| Funktion | Key | Pflicht? |
+|----------|-----|----------|
+| Folgen/Szenen schreiben (Story-KI) | `ANTHROPIC_API_KEY` | **Ja** (sonst Demo) |
+| Stimmen / Sprachausgabe | — (Browser, gratis) | Nein |
+| Premium-Stimmen (später möglich) | `ELEVENLABS_API_KEY` | Nein |
 
 ## Aufbau
 

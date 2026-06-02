@@ -168,6 +168,86 @@ def _normalise(episode: dict[str, Any], number: int) -> dict[str, Any]:
     return episode
 
 
+def _normalise_scene(scene: dict[str, Any]) -> dict[str, Any]:
+    scene.setdefault("location", "Unbekannter Ort")
+    scene.setdefault("narration", "")
+    scene.setdefault("dialogue", [])
+    if scene.get("mood") not in MOODS:
+        scene["mood"] = "ruhig"
+    for line in scene["dialogue"]:
+        line.setdefault("speaker", "???")
+        line.setdefault("emotion", "")
+        line.setdefault("text", "")
+    return scene
+
+
+SCENE_SYSTEM = """\
+Du bist Anime-Drehbuchautor. Schreibe EINE einzelne Szene auf DEUTSCH neu, \
+passend zum Kontext der Folge. Antworte AUSSCHLIESSLICH mit gueltigem JSON \
+(keine Erklaerung, kein Markdown) in genau diesem Schema:
+
+{
+  "location": "Schauplatz",
+  "mood": "eine von: ruhig, froehlich, spannend, traurig, episch, romantisch, duester, geheimnisvoll",
+  "narration": "kurzer Erzaehltext",
+  "dialogue": [ {"speaker": "Name", "emotion": "Gefuehl", "text": "Satz"} ]
+}
+"""
+
+
+def regenerate_scene(
+    series: dict[str, Any],
+    episode: dict[str, Any],
+    scene_index: int,
+    hint: str = "",
+) -> dict[str, Any]:
+    """Erzeugt eine einzelne Szene einer Folge neu."""
+    if _has_api_key():
+        try:
+            return _regen_scene_claude(series, episode, scene_index, hint)
+        except Exception as exc:  # pragma: no cover
+            print(f"[anime_studio] Szenen-Regen-Fehler, nutze Demo: {exc}")
+    # Demo-Fallback: zufaellige neue Szene
+    chars = [c["name"] for c in series.get("characters", [])] or ["Akira", "Yuki"]
+    loc, mood = random.choice(_DEMO_LOCATIONS)
+    sp = random.sample(chars, min(2, len(chars)))
+    dialogue = [{"speaker": sp[0], "emotion": "ueberrascht",
+                 "text": hint or "Etwas Unerwartetes geschieht!"}]
+    if len(sp) > 1:
+        dialogue.append({"speaker": sp[1], "emotion": "entschlossen",
+                         "text": "Dann lass es uns gemeinsam angehen!"})
+    return _normalise_scene(
+        {"location": loc, "mood": mood,
+         "narration": "(Demo) Eine frisch gewuerfelte Szene.",
+         "dialogue": dialogue}
+    )
+
+
+def _regen_scene_claude(
+    series: dict[str, Any], episode: dict[str, Any], scene_index: int, hint: str
+) -> dict[str, Any]:
+    client = Anthropic()
+    context = _build_context(series)
+    old = episode.get("scenes", [])[scene_index]
+    user_msg = (
+        f"{context}\n\n"
+        f"Folge: {episode.get('episode_title', '')} – {episode.get('synopsis', '')}\n"
+        f"Die bisherige Szene {scene_index + 1} war:\n{json.dumps(old, ensure_ascii=False)}\n\n"
+        f"Schreibe diese Szene neu."
+        + (f" Beachte dabei: {hint}" if hint else "")
+    )
+    resp = client.messages.create(
+        model=MODEL,
+        max_tokens=1500,
+        system=SCENE_SYSTEM,
+        messages=[{"role": "user", "content": user_msg}],
+    )
+    raw = "".join(
+        b.text for b in resp.content if getattr(b, "type", "") == "text"
+    )
+    return _normalise_scene(_extract_json(raw))
+
+
 # --------------------------------------------------------------------------
 # Demo-Generator (ohne API-Key) – damit die Seite immer etwas zeigt
 # --------------------------------------------------------------------------

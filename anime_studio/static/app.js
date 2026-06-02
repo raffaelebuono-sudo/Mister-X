@@ -255,6 +255,7 @@ function renderLine() {
   const emo = line.emotion ? ` (${line.emotion})` : "";
   $("dlgSpeaker").textContent = line.speaker + emo;
   typeText($("dlgText"), line.text);
+  if (typeof voice !== "undefined" && voice.on) speakLine(line);
 }
 
 // Schreibmaschinen-Effekt
@@ -332,6 +333,148 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); advance(1); }
   if (e.key === "ArrowLeft") advance(-1);
 });
+
+// ---------------------------------------------------------------------------
+// Stimmen (Sprachausgabe per Browser – kein Key noetig)
+// ---------------------------------------------------------------------------
+const voice = { on: false, deVoices: [] };
+
+function loadVoices() {
+  const all = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+  voice.deVoices = all.filter((v) => v.lang && v.lang.toLowerCase().startsWith("de"));
+}
+if (window.speechSynthesis) {
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+// Pro Charakter eine stabile Stimme + Tonhoehe ableiten
+function voiceForSpeaker(name) {
+  const pool = voice.deVoices.length ? voice.deVoices : speechSynthesis.getVoices();
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 100000;
+  const v = pool.length ? pool[h % pool.length] : null;
+  const pitch = 0.7 + ((h % 70) / 100);   // 0.7 – 1.4
+  const rate = 0.9 + ((h % 25) / 100);    // 0.9 – 1.15
+  return { v, pitch, rate };
+}
+
+function speakLine(line) {
+  if (!window.speechSynthesis || !line || !line.text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(line.text);
+  const cfg = voiceForSpeaker(line.speaker || "?");
+  if (cfg.v) u.voice = cfg.v;
+  u.lang = "de-DE";
+  u.pitch = cfg.pitch;
+  u.rate = cfg.rate;
+  speechSynthesis.speak(u);
+}
+
+function currentLine() {
+  const sc = currentEpisode().scenes[state.sceneIndex];
+  return sc ? sc.dialogue[state.lineIndex] : null;
+}
+
+$("btnVoice").onclick = () => {
+  voice.on = !voice.on;
+  $("btnVoice").textContent = "🔊 Stimmen: " + (voice.on ? "an" : "aus");
+  if (!voice.on && window.speechSynthesis) speechSynthesis.cancel();
+  if (voice.on) speakLine(currentLine());
+};
+$("btnSpeak").onclick = () => speakLine(currentLine());
+
+// ---------------------------------------------------------------------------
+// Szene neu generieren (KI)
+// ---------------------------------------------------------------------------
+$("btnRegen").onclick = async () => {
+  const hint = prompt(
+    "Optionaler Hinweis, wie die Szene anders werden soll (leer = einfach neu):",
+    ""
+  );
+  if (hint === null) return; // abgebrochen
+  const ep = currentEpisode();
+  $("btnRegen").disabled = true;
+  $("btnRegen").textContent = "🎲 …";
+  try {
+    const res = await api(
+      `/api/series/${state.series.id}/episode/${ep.number}/regen-scene`,
+      {
+        method: "POST",
+        body: JSON.stringify({ scene_index: state.sceneIndex, hint: hint || "" }),
+      }
+    );
+    state.series = res.series;
+    state.lineIndex = 0;
+    renderScene();
+  } catch (e) {
+    alert("Fehler: " + e.message);
+  } finally {
+    $("btnRegen").disabled = false;
+    $("btnRegen").textContent = "🎲 Szene neu";
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Szenen-Editor
+// ---------------------------------------------------------------------------
+function openEditor() {
+  const scene = currentEpisode().scenes[state.sceneIndex];
+  $("edLocation").value = scene.location || "";
+  $("edMood").value = scene.mood || "ruhig";
+  $("edNarration").value = scene.narration || "";
+  $("edDialogue").innerHTML = "";
+  (scene.dialogue || []).forEach((line) => addDialogueRow(line));
+  if (!scene.dialogue || !scene.dialogue.length) addDialogueRow();
+  $("editorOverlay").classList.remove("hidden");
+}
+
+function addDialogueRow(line = { speaker: "", emotion: "", text: "" }) {
+  const row = document.createElement("div");
+  row.className = "ed-row";
+  row.innerHTML = `
+    <input class="ed-speaker" placeholder="Sprecher" value="${escapeAttr(line.speaker)}" />
+    <input class="ed-emotion" placeholder="Gefühl" value="${escapeAttr(line.emotion)}" />
+    <input class="ed-text" placeholder="Text" value="${escapeAttr(line.text)}" />
+    <button class="ed-del" title="Zeile löschen">✕</button>`;
+  row.querySelector(".ed-del").onclick = () => row.remove();
+  $("edDialogue").appendChild(row);
+}
+
+$("edAddLine").onclick = () => addDialogueRow();
+$("edCancel").onclick = () => $("editorOverlay").classList.add("hidden");
+$("btnEdit").onclick = openEditor;
+
+$("edSave").onclick = async () => {
+  const ep = JSON.parse(JSON.stringify(currentEpisode())); // Kopie
+  const scene = ep.scenes[state.sceneIndex];
+  scene.location = $("edLocation").value.trim();
+  scene.mood = $("edMood").value;
+  scene.narration = $("edNarration").value.trim();
+  scene.dialogue = [...document.querySelectorAll("#edDialogue .ed-row")]
+    .map((r) => ({
+      speaker: r.querySelector(".ed-speaker").value.trim() || "???",
+      emotion: r.querySelector(".ed-emotion").value.trim(),
+      text: r.querySelector(".ed-text").value.trim(),
+    }))
+    .filter((l) => l.text);
+  try {
+    const res = await api(
+      `/api/series/${state.series.id}/episode/${ep.number}`,
+      { method: "PUT", body: JSON.stringify({ episode: ep }) }
+    );
+    state.series = res.series;
+    $("editorOverlay").classList.add("hidden");
+    state.lineIndex = 0;
+    renderScene();
+  } catch (e) {
+    alert("Speichern fehlgeschlagen: " + e.message);
+  }
+};
+
+function escapeAttr(s) {
+  return String(s ?? "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
 
 // ---------------------------------------------------------------------------
 // Hilfen
