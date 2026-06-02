@@ -122,13 +122,21 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
   transition: background .6s ease;
   background: linear-gradient(160deg, #3a3a6a, #1c1c3a);
 }
-.scene-loc { position: absolute; top: 16px; left: 18px; right: 18px; }
+.scene-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 0; animation: fade .4s ease;
+}
+.scene-shade {
+  position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(to bottom, rgba(0,0,0,.15) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,.55) 100%);
+}
+.scene-loc { position: absolute; top: 16px; left: 18px; right: 18px; z-index: 3; }
 .scene-loc span {
   background: rgba(0,0,0,.45); padding: 6px 14px; border-radius: 999px;
   font-size: 13px; font-weight: 700; backdrop-filter: blur(4px);
 }
 .scene-center {
-  position: absolute; inset: 0; display: flex; flex-direction: column;
+  position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 10px; pointer-events: none;
 }
 .char-avatar {
@@ -140,7 +148,7 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 }
 .char-name { font-weight: 800; font-size: 15px; background: rgba(0,0,0,.4); padding: 4px 12px; border-radius: 999px; }
 .narration {
-  position: absolute; top: 60px; left: 18px; right: 18px;
+  position: absolute; top: 60px; left: 18px; right: 18px; z-index: 3;
   font-style: italic; color: #e9e6ff; text-align: center; font-size: 15px;
   text-shadow: 0 2px 8px rgba(0,0,0,.6);
 }

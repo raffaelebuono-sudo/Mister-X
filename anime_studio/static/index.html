@@ -37,6 +37,9 @@
           <label>Hauptcharaktere (mit Komma trennen, optional)
             <input id="newChars" placeholder="z. B. Akira, Yuki, Meister Ren" />
           </label>
+          <label>Zeichenstil der Bilder
+            <select id="newStyle"></select>
+          </label>
           <button id="btnCreate" class="primary">Serie erstellen →</button>
         </div>
 
@@ -73,6 +76,8 @@
           <!-- Player -->
           <div id="player" class="player hidden">
             <div id="sceneBg" class="scene-bg">
+              <img id="sceneImg" class="scene-img hidden" alt="" />
+              <div id="sceneShade" class="scene-shade hidden"></div>
               <div class="scene-loc"><span id="sceneLocation"></span></div>
               <div class="scene-center">
                 <div id="charAvatar" class="char-avatar"></div>
@@ -93,6 +98,7 @@
             <div class="controls tools">
               <button id="btnVoice" class="ghost">🔊 Stimmen: aus</button>
               <button id="btnSpeak" class="ghost">▶ Zeile vorlesen</button>
+              <button id="btnImage" class="ghost">🎨 Bild für Szene</button>
               <button id="btnRegen" class="ghost">🎲 Szene neu</button>
               <button id="btnEdit" class="ghost">✏️ Szene bearbeiten</button>
             </div>

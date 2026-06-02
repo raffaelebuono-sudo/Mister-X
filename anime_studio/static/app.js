@@ -11,7 +11,21 @@ const state = {
   autoplay: false,
   autoTimer: null,
   typing: null,
+  imagesEnabled: false, // ist ein Bild-Key gesetzt?
 };
+
+// Zeichenstil-Voreinstellungen (leer = Server-Standard: One-Piece-Look)
+const STYLE_PRESETS = [
+  { label: "Shonen-Piraten-Abenteuer (One-Piece-Look)", value: "" },
+  { label: "Modern & hochglanz (Action-Look)",
+    value: "modern high-budget anime style, ultra detailed, cinematic dramatic lighting, vibrant saturated colors, sharp cel shading, dynamic action" },
+  { label: "Sanft & malerisch (Ghibli-artig)",
+    value: "soft painterly anime style, warm gentle colors, lush hand-painted backgrounds, whimsical cozy atmosphere, watercolor feel" },
+  { label: "Retro 90er-Anime",
+    value: "retro 1990s anime style, slight film grain, muted nostalgic colors, classic hand-drawn cel animation look" },
+  { label: "Dunkel & ernst (Seinen)",
+    value: "dark gritty seinen anime style, dramatic deep shadows, moody atmosphere, detailed semi-realistic proportions" },
+];
 
 const $ = (id) => document.getElementById(id);
 const api = async (url, opts = {}) => {
@@ -58,16 +72,30 @@ window.showHome = showHome;
 async function loadStatus() {
   try {
     const s = await api("/api/status");
+    state.imagesEnabled = !!s.images_enabled;
     const badge = $("modeBadge");
+    const img = s.images_enabled ? " · 🎨 " + s.image_provider : " · 🎨 aus";
     if (s.demo_mode) {
-      badge.textContent = "Demo-Modus (kein API-Key)";
+      badge.textContent = "Demo-Modus (kein Story-Key)" + img;
       badge.classList.add("demo");
     } else {
-      badge.textContent = "KI aktiv · " + s.model;
+      badge.textContent = "KI aktiv · " + s.model + img;
     }
   } catch {
     $("modeBadge").textContent = "offline";
   }
+}
+
+function fillStylePresets() {
+  const sel = $("newStyle");
+  if (!sel) return;
+  sel.innerHTML = "";
+  STYLE_PRESETS.forEach((p, i) => {
+    const o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = p.label;
+    sel.appendChild(o);
+  });
 }
 
 async function loadSeriesList() {
@@ -105,6 +133,8 @@ $("btnCreate").onclick = async () => {
   const characters = $("newChars").value
     .split(",").map((s) => s.trim()).filter(Boolean)
     .map((name) => ({ name, role: "Hauptcharakter" }));
+  const styleIdx = parseInt($("newStyle").value || "0", 10);
+  const art_style = (STYLE_PRESETS[styleIdx] || STYLE_PRESETS[0]).value;
   try {
     const series = await api("/api/series", {
       method: "POST",
@@ -112,6 +142,7 @@ $("btnCreate").onclick = async () => {
         title,
         genre: $("newGenre").value.trim() || "Abenteuer",
         characters,
+        art_style,
       }),
     });
     $("newTitle").value = $("newGenre").value = $("newChars").value = "";
@@ -181,7 +212,10 @@ $("btnGenerate").onclick = async () => {
     state.series = res.series;
     $("epKeywords").value = "";
     renderEpisodeList();
+    const newEp = state.series.episodes[state.series.episodes.length - 1];
     playEpisode(state.series.episodes.length - 1);
+    // Bilder automatisch erzeugen (falls Bild-Key vorhanden)
+    if (state.imagesEnabled) generateAllImages(newEp.number);
   } catch (e) {
     $("genHint").textContent = "Fehler: " + e.message;
     $("emptyStage").classList.remove("hidden");
@@ -213,9 +247,21 @@ function renderScene() {
   const scene = ep.scenes[state.sceneIndex];
   if (!scene) return;
 
-  // Hintergrund nach Stimmung
+  // Hintergrund nach Stimmung (Fallback hinter dem Bild)
   const bg = $("sceneBg");
   bg.className = "scene-bg mood-" + (scene.mood || "ruhig");
+
+  // Szenenbild (falls vorhanden)
+  const img = $("sceneImg");
+  const shade = $("sceneShade");
+  if (scene.image) {
+    img.src = scene.image;
+    img.classList.remove("hidden");
+    shade.classList.remove("hidden");
+  } else {
+    img.classList.add("hidden");
+    shade.classList.add("hidden");
+  }
 
   $("sceneLocation").textContent = "📍 " + scene.location;
   $("narration").textContent = scene.narration || "";
@@ -244,7 +290,9 @@ function renderLine() {
     return;
   }
 
-  avatar.style.display = "flex";
+  const hasImage = !!scene.image;
+  avatar.style.display = hasImage ? "none" : "flex";
+  nameEl.style.display = hasImage ? "none" : "block";
   avatar.textContent = initialOf(line.speaker);
   avatar.style.background = colorFor(line.speaker);
   avatar.style.transform = "scale(1)";
@@ -416,6 +464,60 @@ $("btnRegen").onclick = async () => {
 };
 
 // ---------------------------------------------------------------------------
+// Bild fuer Szene generieren (KI)
+// ---------------------------------------------------------------------------
+async function generateImage(epNumber, sceneIndex) {
+  const res = await api(
+    `/api/series/${state.series.id}/episode/${epNumber}/scene-image`,
+    { method: "POST", body: JSON.stringify({ scene_index: sceneIndex, hint: "" }) }
+  );
+  // Bild in den lokalen Zustand uebernehmen
+  const ep = state.series.episodes.find((e) => e.number === epNumber);
+  if (ep && ep.scenes[sceneIndex]) ep.scenes[sceneIndex].image = res.image;
+  return res.image;
+}
+
+$("btnImage").onclick = async () => {
+  if (!state.imagesEnabled) {
+    alert("Kein Bild-Key gesetzt. Trage OPENAI_API_KEY oder GEMINI_API_KEY in die .env ein.");
+    return;
+  }
+  const ep = currentEpisode();
+  const btn = $("btnImage");
+  btn.disabled = true; btn.textContent = "🎨 zeichnet…";
+  try {
+    await generateImage(ep.number, state.sceneIndex);
+    renderScene();
+  } catch (e) {
+    alert("Bild-Fehler: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "🎨 Bild für Szene";
+  }
+};
+
+// Alle Szenenbilder einer Folge nacheinander erzeugen (mit Fortschritt)
+async function generateAllImages(epNumber) {
+  if (!state.imagesEnabled) return;
+  const ep = state.series.episodes.find((e) => e.number === epNumber);
+  if (!ep) return;
+  const hint = $("genHint");
+  for (let i = 0; i < ep.scenes.length; i++) {
+    if (ep.scenes[i].image) continue;
+    hint.textContent = `🎨 Zeichne Bild ${i + 1}/${ep.scenes.length}…`;
+    try {
+      await generateImage(epNumber, i);
+      if (state.episodeIndex === state.series.episodes.indexOf(ep) &&
+          state.sceneIndex === i) renderScene();
+    } catch (e) {
+      hint.textContent = "Bild-Fehler: " + e.message;
+      return;
+    }
+  }
+  hint.textContent = "✓ Bilder fertig.";
+  renderScene();
+}
+
+// ---------------------------------------------------------------------------
 // Szenen-Editor
 // ---------------------------------------------------------------------------
 function openEditor() {
@@ -485,5 +587,6 @@ function escapeHtml(s) {
 }
 
 // Start
+fillStylePresets();
 loadStatus();
 loadSeriesList();

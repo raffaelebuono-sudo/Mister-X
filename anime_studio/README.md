@@ -21,6 +21,11 @@ mit fortlaufender, zusammenhängender Handlung.
   Dialogzeilen lassen sich von Hand ändern, hinzufügen oder löschen.
 - **Szene neu generieren 🎲**: Einzelne Szenen per KI neu erzeugen – optional
   mit einem Hinweis, wie sie anders werden soll.
+- **Echte Anime-Bilder 🎨**: Pro Szene erzeugt eine Bild-KI ein echtes
+  Anime-Bild (z. B. im Shonen-Piraten-Abenteuer-Look). Beim Erstellen einer
+  Folge werden die Bilder automatisch gezeichnet; einzelne Bilder lassen sich
+  neu erzeugen. Beim Anlegen der Serie wählst du den **Zeichenstil**.
+  Ohne Bild-Key bleibt der Stimmungs-Hintergrund erhalten.
 - **Speicherung**: Serien werden lokal als JSON unter `data/` abgelegt.
 - **Demo-Modus**: Ohne API-Key läuft eine eingebaute Demo, damit du die Seite
   sofort testen kannst.
@@ -63,8 +68,28 @@ läuft.
 | Funktion | Key | Pflicht? |
 |----------|-----|----------|
 | Folgen/Szenen schreiben (Story-KI) | `ANTHROPIC_API_KEY` | **Ja** (sonst Demo) |
+| Echte Anime-Bilder pro Szene | `OPENAI_API_KEY` **oder** `GEMINI_API_KEY` | Nur für Bilder |
 | Stimmen / Sprachausgabe | — (Browser, gratis) | Nein |
 | Premium-Stimmen (später möglich) | `ELEVENLABS_API_KEY` | Nein |
+
+> **Hinweis zum Stil:** Bild-KIs blockieren meist Prompts, die einen lebenden
+> Künstler oder eine geschützte Marke namentlich nennen (z. B. „Eiichiro Oda",
+> „One Piece"). Das Studio beschreibt stattdessen den *Look* (kräftige
+> Tuschelinien, expressive Figuren, leuchtende Farben, Shonen-Abenteuer) –
+> das Ergebnis sieht dem Vorbild sehr ähnlich, ist aber rechtlich/technisch
+> sauber.
+
+### Bild-Anbieter
+
+Es genügt **einer** der beiden Keys:
+
+- **OpenAI** (`OPENAI_API_KEY`) – Modell `gpt-image-1`, sehr gute Anime-Qualität.
+  Erfordert ein OpenAI-Konto mit aktivierter Abrechnung.
+- **Google Gemini** (`GEMINI_API_KEY`) – Modell
+  `gemini-2.0-flash-preview-image-generation`, mit kleinem Gratis-Kontingent.
+
+Mit `IMAGE_PROVIDER=auto` (Standard) wählt das Studio automatisch den
+vorhandenen Anbieter.
 
 ## Aufbau
 

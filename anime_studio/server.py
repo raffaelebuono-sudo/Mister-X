@@ -23,11 +23,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import generator
+from . import images
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 STATIC_DIR = BASE_DIR / "static"
+IMAGES_DIR = DATA_DIR / "images"
 DATA_DIR.mkdir(exist_ok=True)
+IMAGES_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Anime-Studio")
 
@@ -69,6 +72,7 @@ class SeriesIn(BaseModel):
     title: str
     genre: str = "Abenteuer"
     characters: list[CharacterIn] = []
+    art_style: str = ""
 
 
 class EpisodeIn(BaseModel):
@@ -94,6 +98,8 @@ def status() -> dict[str, Any]:
     return {
         "demo_mode": not generator._has_api_key(),
         "model": generator.MODEL,
+        "images_enabled": images.available(),
+        "image_provider": images.provider(),
     }
 
 
@@ -123,6 +129,7 @@ def create_series(data: SeriesIn) -> dict[str, Any]:
         "title": data.title.strip() or "Meine Anime-Serie",
         "genre": data.genre.strip() or "Abenteuer",
         "characters": [c.model_dump() for c in data.characters],
+        "art_style": data.art_style.strip() or images.DEFAULT_STYLE,
         "episodes": [],
     }
     _save(series)
@@ -208,9 +215,37 @@ def regen_scene(
     return {"episode": episode, "series": series}
 
 
+@app.post("/api/series/{series_id}/episode/{number}/scene-image")
+def scene_image(
+    series_id: str, number: int, data: SceneRegen
+) -> dict[str, Any]:
+    """Erzeugt ein KI-Bild fuer eine einzelne Szene und speichert den Pfad."""
+    if not images.available():
+        raise HTTPException(
+            status_code=400,
+            detail="Kein Bild-Key gesetzt (OPENAI_API_KEY oder GEMINI_API_KEY).",
+        )
+    series = _load(series_id)
+    idx = _find_episode(series, number)
+    episode = series["episodes"][idx]
+    scenes = episode.get("scenes", [])
+    if not (0 <= data.scene_index < len(scenes)):
+        raise HTTPException(status_code=400, detail="Ungueltige Szene.")
+    url = images.generate_scene_image(series, scenes[data.scene_index])
+    if not url:
+        raise HTTPException(status_code=502, detail="Bild konnte nicht erzeugt werden.")
+    scenes[data.scene_index]["image"] = url
+    episode["scenes"] = scenes
+    series["episodes"][idx] = episode
+    _save(series)
+    return {"image": url, "scene_index": data.scene_index}
+
+
 # --------------------------------------------------------------------------
-# Statische Website
+# Statische Website + erzeugte Bilder
 # --------------------------------------------------------------------------
+
+app.mount("/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
 
 @app.get("/")
 def index() -> FileResponse:
