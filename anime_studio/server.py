@@ -28,6 +28,7 @@ from . import audio
 from . import video
 from . import clips as clips_mod
 from . import music as music_mod
+from . import lora as lora_mod
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -117,6 +118,7 @@ def status() -> dict[str, Any]:
         "video_enabled": video.available(),
         "clips_enabled": clips_mod.available(),
         "music_enabled": music_mod.available(),
+        "lora_enabled": lora_mod.available(),
     }
 
 
@@ -205,6 +207,41 @@ def _find_episode(series: dict[str, Any], number: int) -> int:
         if ep.get("number") == number:
             return i
     raise HTTPException(status_code=404, detail="Folge nicht gefunden.")
+
+
+def _find_character(series: dict[str, Any], name: str) -> dict[str, Any]:
+    for c in series.get("characters", []):
+        if c.get("name", "").lower() == name.lower():
+            return c
+    raise HTTPException(status_code=404, detail="Figur nicht gefunden.")
+
+
+@app.post("/api/series/{series_id}/character/{name}/train-lora")
+def train_lora(series_id: str, name: str) -> dict[str, Any]:
+    """Startet das LoRA-Training fuer eine Figur (langsam, kostenpflichtig)."""
+    if not lora_mod.available():
+        raise HTTPException(
+            status_code=400,
+            detail="LoRA braucht REPLICATE_API_TOKEN und REPLICATE_USERNAME.",
+        )
+    series = _load(series_id)
+    character = _find_character(series, name)
+    try:
+        st = lora_mod.start_training(series, character)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Training-Fehler: {exc}")
+    _save(series)
+    return {"lora": st}
+
+
+@app.get("/api/series/{series_id}/character/{name}/lora")
+def lora_status(series_id: str, name: str) -> dict[str, Any]:
+    """Fragt den aktuellen LoRA-Trainingsstatus einer Figur ab."""
+    series = _load(series_id)
+    character = _find_character(series, name)
+    st = lora_mod.refresh_status(character)
+    _save(series)
+    return {"lora": st}
 
 
 @app.put("/api/series/{series_id}/episode/{number}")

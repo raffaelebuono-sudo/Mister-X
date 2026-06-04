@@ -80,6 +80,7 @@ async function loadStatus() {
     state.videoEnabled = !!s.video_enabled;
     state.clipsEnabled = !!s.clips_enabled;
     state.musicEnabled = !!s.music_enabled;
+    state.loraEnabled = !!s.lora_enabled;
     // Export-Optionen nur zeigen, wenn verfuegbar
     const opts = $("exportOpts");
     if (opts && (state.clipsEnabled || state.musicEnabled)) {
@@ -186,6 +187,7 @@ function openSeriesData(series) {
   $("seriesTitle").textContent = series.title;
   $("seriesGenre").textContent = series.genre;
   renderEpisodeList();
+  renderLoraPanel();
   showSeries();
   if (series.episodes.length) {
     playEpisode(series.episodes.length - 1);
@@ -194,6 +196,71 @@ function openSeriesData(series) {
     $("emptyStage").classList.remove("hidden");
   }
   $("epKeywords").focus();
+}
+
+const LORA_LABEL = {
+  none: "nicht trainiert",
+  training: "⏳ trainiert…",
+  ready: "✅ konsistent",
+  failed: "⚠️ fehlgeschlagen",
+};
+
+function renderLoraPanel() {
+  const panel = $("loraPanel");
+  if (!panel || !state.loraEnabled) { if (panel) panel.style.display = "none"; return; }
+  const chars = state.series.characters || [];
+  if (!chars.length) { panel.style.display = "none"; return; }
+  panel.style.display = "block";
+  const ul = $("loraList");
+  ul.innerHTML = "";
+  chars.forEach((c) => {
+    const st = (c.lora && c.lora.status) || "none";
+    const li = document.createElement("li");
+    li.className = "lora-item";
+    const label = document.createElement("span");
+    label.innerHTML = `<b>${c.name}</b> <span class="muted small">${LORA_LABEL[st] || st}</span>`;
+    li.appendChild(label);
+    if (st === "none" || st === "failed") {
+      const btn = document.createElement("button");
+      btn.className = "ghost small";
+      btn.textContent = "trainieren";
+      btn.onclick = () => trainLora(c.name);
+      li.appendChild(btn);
+    } else if (st === "training") {
+      pollLora(c.name); // automatisch weiter abfragen
+    }
+    ul.appendChild(li);
+  });
+}
+
+async function trainLora(name) {
+  if (!confirm(`LoRA-Training für „${name}" starten?\nDas dauert ~10–20 Min und kostet GPU-Zeit auf deinem Replicate-Account.`))
+    return;
+  try {
+    await api(`/api/series/${state.series.id}/character/${encodeURIComponent(name)}/train-lora`,
+      { method: "POST" });
+    const c = state.series.characters.find((x) => x.name === name);
+    if (c) c.lora = { status: "training" };
+    renderLoraPanel();
+  } catch (e) {
+    alert("Training-Fehler: " + e.message);
+  }
+}
+
+async function pollLora(name) {
+  if (state._loraPolling && state._loraPolling[name]) return;
+  state._loraPolling = state._loraPolling || {};
+  state._loraPolling[name] = true;
+  setTimeout(async () => {
+    try {
+      const res = await api(
+        `/api/series/${state.series.id}/character/${encodeURIComponent(name)}/lora`);
+      const c = state.series.characters.find((x) => x.name === name);
+      if (c) c.lora = res.lora;
+    } catch (_) { /* still pollen */ }
+    state._loraPolling[name] = false;
+    renderLoraPanel();
+  }, 20000); // alle 20 s
 }
 
 function renderEpisodeList() {

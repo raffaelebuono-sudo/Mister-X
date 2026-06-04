@@ -101,6 +101,22 @@ def build_prompt(
     return " ".join(p for p in parts if p).strip()
 
 
+def _dominant_character(series: dict[str, Any], scene: dict[str, Any]) -> dict[str, Any] | None:
+    """Figur mit den meisten Sprechzeilen in der Szene (fuer LoRA-Routing)."""
+    counts: dict[str, int] = {}
+    for line in scene.get("dialogue", []):
+        sp = line.get("speaker")
+        if sp and sp != "???":
+            counts[sp] = counts.get(sp, 0) + 1
+    if not counts:
+        return None
+    top = max(counts, key=counts.get)
+    for c in series.get("characters", []):
+        if c.get("name") == top:
+            return c
+    return None
+
+
 def generate_scene_image(
     series: dict[str, Any], scene: dict[str, Any]
 ) -> str | None:
@@ -108,6 +124,17 @@ def generate_scene_image(
 
     Rueckgabe z.B. '/images/<serie>/<datei>.png' oder None bei Fehler/kein Key.
     """
+    # Konsistenz-Weg: Hat die Hauptfigur der Szene ein trainiertes LoRA,
+    # erzeugen wir das Bild ueber ihr Spezialmodell -> gleiche Figur ueberall.
+    from . import lora
+    main = _dominant_character(series, scene)
+    if main and lora.ready(main):
+        prompt = build_prompt(series, scene, style=series.get("art_style"))
+        data = lora.generate_image(main, prompt)
+        if data:
+            return _save(series["id"], data)
+        # sonst: normaler Weg unten
+
     prov = provider()
     if not prov:
         return None

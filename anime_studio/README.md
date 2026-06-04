@@ -45,6 +45,16 @@ mit fortlaufender, zusammenhängender Handlung.
   wird je nach Stimmung der Folge ein Musiktrack erzeugt und leise unter die
   Stimmen gemischt.
 
+- **Figur-Konsistenz per LoRA 🧬 (optional, Studio-Weg)**: Mit
+  `REPLICATE_API_TOKEN` **und** `REPLICATE_USERNAME` lässt sich pro Figur ein
+  eigenes Spezialmodell (LoRA) trainieren. Danach sieht die Figur in *jeder*
+  generierten Szene gleich aus – derselbe Kopf, dieselbe Frisur, dieselbe
+  Kleidung. Das ist der Trick, mit dem echte Konsistenz entsteht. In der
+  Serienansicht unter „🧬 Figur-Konsistenz" je Figur startbar. **Training
+  dauert ~10–20 Min pro Figur und kostet GPU-Zeit; das trainierte Modell wird
+  privat auf deinem Replicate-Account gespeichert.** Szenen, in denen die Figur
+  die Hauptrolle spielt, werden danach automatisch über ihr LoRA gerendert.
+
 > **Ehrlicher Hinweis zur Qualität:** Auch mit allen Optionen entsteht ein
 > beeindruckender *KI-Anime-Short / Trailer* – **kein** Anime auf
 > Netflix-Serien-Niveau. Das ist mit heutiger KI (lange, durchgehend
@@ -98,6 +108,7 @@ läuft.
 | Profi-Stimmen | `ELEVENLABS_API_KEY` | Nur für Profi-Stimmen |
 | Video-Export (MP4) | — (`ffmpeg` ist mitgeliefert) | Nein |
 | Bewegte KI-Video-Clips + KI-Musik | `REPLICATE_API_TOKEN` | Nur für Clips/Musik |
+| Figur-Konsistenz (LoRA) | `REPLICATE_API_TOKEN` + `REPLICATE_USERNAME` | Nur für LoRA |
 
 > **Hinweis zum Stil:** Bild-KIs blockieren meist Prompts, die einen lebenden
 > Künstler oder eine geschützte Marke namentlich nennen (z. B. „Eiichiro Oda",
