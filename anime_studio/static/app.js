@@ -672,6 +672,54 @@ $("videoClose").onclick = () => {
 };
 
 // ---------------------------------------------------------------------------
+// Manga-Export (S/W-Seiten + PDF + CBZ)
+// ---------------------------------------------------------------------------
+$("btnManga").onclick = async () => {
+  const ep = currentEpisode();
+  const useAi = state.imagesEnabled &&
+    confirm("Panels mit echter KI-Manga-Kunst zeichnen?\n\n" +
+            "OK = KI-Linienkunst (braucht Bild-Key, dauert etwas).\n" +
+            "Abbrechen = schnelle Screentone-Platzhalter.");
+  const btn = $("btnManga");
+  btn.disabled = true;
+  btn.textContent = "📖 zeichnet…";
+  try {
+    const res = await api(
+      `/api/series/${state.series.id}/episode/${ep.number}/manga`,
+      { method: "POST", body: JSON.stringify({ use_ai: useAi }) }
+    );
+    ep.manga = res;
+    openManga(res);
+  } catch (e) {
+    alert("Manga-Fehler: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "📖 Als Manga";
+  }
+};
+
+function openManga(m) {
+  state.mangaPages = m.pages || [];
+  state.mangaIndex = 0;
+  $("mangaPdf").href = m.pdf;
+  $("mangaCbz").href = m.cbz;
+  renderMangaPage();
+  $("mangaOverlay").classList.remove("hidden");
+}
+
+function renderMangaPage() {
+  const pages = state.mangaPages || [];
+  if (!pages.length) return;
+  state.mangaIndex = Math.max(0, Math.min(state.mangaIndex, pages.length - 1));
+  $("mangaPage").src = pages[state.mangaIndex];
+  $("mangaProgress").textContent = `Seite ${state.mangaIndex + 1} / ${pages.length}`;
+}
+
+$("mangaPrev").onclick = () => { state.mangaIndex--; renderMangaPage(); };
+$("mangaNext").onclick = () => { state.mangaIndex++; renderMangaPage(); };
+$("mangaClose").onclick = () => $("mangaOverlay").classList.add("hidden");
+
+// ---------------------------------------------------------------------------
 // Szenen-Editor
 // ---------------------------------------------------------------------------
 function openEditor() {

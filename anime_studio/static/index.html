@@ -110,6 +110,7 @@
               <button id="btnRegen" class="ghost">🎲 Szene neu</button>
               <button id="btnEdit" class="ghost">✏️ Szene bearbeiten</button>
               <button id="btnExport" class="ghost">🎞️ Als Video exportieren</button>
+              <button id="btnManga" class="ghost">📖 Als Manga</button>
             </div>
             <div class="controls tools" id="exportOpts" style="display:none">
               <label class="opt"><input type="checkbox" id="optClips" /> 🎞️ Bewegte KI-Clips</label>
@@ -142,6 +143,26 @@
             <a id="videoDownload" class="ghost" style="text-decoration:none;padding:12px 18px;border-radius:12px" download>⬇️ Herunterladen</a>
             <button id="videoClose" class="primary" style="width:auto">Schließen</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Manga-Anzeige (Overlay) ===== -->
+    <div id="mangaOverlay" class="overlay hidden">
+      <div class="modal">
+        <h2>Dein Manga-Kapitel 📖</h2>
+        <div class="manga-stage">
+          <img id="mangaPage" class="manga-page" alt="Manga-Seite" />
+        </div>
+        <div class="manga-controls">
+          <button id="mangaPrev" class="ghost">⟨ Vorherige</button>
+          <span id="mangaProgress" class="progress"></span>
+          <button id="mangaNext" class="ghost">Nächste ⟩</button>
+        </div>
+        <div class="modal-actions">
+          <a id="mangaPdf" class="ghost" style="text-decoration:none;padding:12px 18px;border-radius:12px" download>⬇️ PDF</a>
+          <a id="mangaCbz" class="ghost" style="text-decoration:none;padding:12px 18px;border-radius:12px" download>⬇️ CBZ</a>
+          <button id="mangaClose" class="primary" style="width:auto">Schließen</button>
         </div>
       </div>
     </div>

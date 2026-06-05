@@ -29,6 +29,7 @@ from . import video
 from . import clips as clips_mod
 from . import music as music_mod
 from . import lora as lora_mod
+from . import manga as manga_mod
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -36,10 +37,12 @@ STATIC_DIR = BASE_DIR / "static"
 IMAGES_DIR = DATA_DIR / "images"
 MEDIA_DIR = DATA_DIR / "media"
 CLIPS_DIR = DATA_DIR / "clips"
+MANGA_DIR = DATA_DIR / "manga"
 DATA_DIR.mkdir(exist_ok=True)
 IMAGES_DIR.mkdir(exist_ok=True)
 MEDIA_DIR.mkdir(exist_ok=True)
 CLIPS_DIR.mkdir(exist_ok=True)
+MANGA_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Anime-Studio")
 
@@ -102,6 +105,10 @@ class ExportOptions(BaseModel):
     use_music: bool = False
 
 
+class MangaOptions(BaseModel):
+    use_ai: bool = False
+
+
 # --------------------------------------------------------------------------
 # API
 # --------------------------------------------------------------------------
@@ -119,6 +126,7 @@ def status() -> dict[str, Any]:
         "clips_enabled": clips_mod.available(),
         "music_enabled": music_mod.available(),
         "lora_enabled": lora_mod.available(),
+        "manga_enabled": manga_mod.available(),
     }
 
 
@@ -342,6 +350,28 @@ def line_audio(series_id: str, number: int, data: SceneRegen) -> dict[str, Any]:
     return {"audio": url}
 
 
+@app.post("/api/series/{series_id}/episode/{number}/manga")
+def export_manga(
+    series_id: str, number: int, opts: MangaOptions | None = None
+) -> dict[str, Any]:
+    """Erzeugt die Folge als klassisches S/W-Manga-Kapitel (PNG-Seiten + PDF + CBZ).
+
+    opts.use_ai -> Panels als echte KI-Manga-Linienkunst (braucht Bild-Key),
+    sonst Screentone-Platzhalter.
+    """
+    opts = opts or MangaOptions()
+    series = _load(series_id)
+    idx = _find_episode(series, number)
+    result = manga_mod.build_episode_manga(
+        series, series["episodes"][idx], use_ai=opts.use_ai
+    )
+    if not result:
+        raise HTTPException(status_code=502, detail="Manga konnte nicht erstellt werden.")
+    series["episodes"][idx]["manga"] = result
+    _save(series)
+    return result
+
+
 @app.post("/api/series/{series_id}/episode/{number}/export")
 def export_video(
     series_id: str, number: int, opts: ExportOptions | None = None
@@ -374,6 +404,7 @@ def export_video(
 app.mount("/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 app.mount("/clips", StaticFiles(directory=str(CLIPS_DIR)), name="clips")
+app.mount("/manga", StaticFiles(directory=str(MANGA_DIR)), name="manga")
 
 @app.get("/")
 def index() -> FileResponse:
