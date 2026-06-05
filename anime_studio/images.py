@@ -152,6 +152,31 @@ def generate_scene_image(
     return _save(series["id"], data)
 
 
+MANGA_STYLE = (
+    "black and white manga panel art, detailed ink line work, screentone "
+    "shading, dramatic hatching, expressive shonen manga style, dynamic "
+    "composition, high contrast, monochrome, no text, no speech bubbles, "
+    "no watermark"
+)
+
+
+def generate_from_prompt(prompt: str) -> bytes | None:
+    """Erzeugt ein Bild aus einem fertigen Prompt (z.B. fuer Manga-Panels).
+
+    Gibt die rohen Bild-Bytes zurueck (nicht gespeichert) oder None.
+    """
+    prov = provider()
+    if not prov:
+        return None
+    try:
+        if prov == "openai":
+            return _openai_image(prompt)
+        return _gemini_image(prompt)
+    except Exception as exc:  # pragma: no cover - haengt vom Netz/Key ab
+        print(f"[anime_studio] Bild-Fehler ({prov}): {exc}")
+        return None
+
+
 def _save(series_id: str, png_bytes: bytes) -> str:
     safe = "".join(c for c in series_id if c.isalnum() or c in "-_")
     folder = IMAGES_DIR / safe

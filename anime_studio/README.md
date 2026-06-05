@@ -8,6 +8,13 @@ mit fortlaufender, zusammenhängender Handlung.
 
 ## Funktionen
 
+- **Manga-Kapitel 📖 (S/W)**: Wandelt eine Folge in echte **Manga-Seiten** um –
+  klassisches Panel-Layout, Sprechblasen mit Sprech-Spitze, Erzähl-Kästen,
+  Seitenrahmen, Leserichtung rechts→links. Funktioniert **ohne Key** (Panels als
+  Screentone-Platzhalter); mit Bild-Key werden die Panels zu echter
+  **S/W-Manga-Linienkunst**. Im Browser durchblätterbar, Download als
+  **PDF und CBZ** (für Manga-Reader-Apps). *Dieser Modus passt besonders gut zur
+  heutigen KI und liefert sofort vorzeigbare Ergebnisse.*
 - **Serie anlegen**: Titel, Genre und Hauptcharaktere festlegen.
 - **Folge generieren**: Stichworte eingeben → KI erstellt eine ganze Folge.
 - **Fortlaufende Handlung**: Jede neue Folge kennt den bisherigen Verlauf und

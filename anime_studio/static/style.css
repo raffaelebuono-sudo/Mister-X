@@ -202,6 +202,9 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 .lora-list { list-style: none; padding: 0; margin: 10px 0 0; }
 .lora-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; }
 button.ghost.small { font-size: 12px; padding: 5px 10px; }
+.manga-stage { display: flex; justify-content: center; background: #1a1a22; border-radius: 12px; padding: 10px; max-height: 70vh; overflow: auto; }
+.manga-page { max-width: 100%; max-height: 68vh; border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.5); background: #fff; }
+.manga-controls { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 14px 0 4px; }
 
 /* ---------- Editor-Overlay ---------- */
 .overlay {
