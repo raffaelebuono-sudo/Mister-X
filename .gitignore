@@ -32,3 +32,6 @@ logs/
 node_modules/
 dist/
 out/
+
+# 2D-Serien-Generator – erzeugte Folgen
+output/

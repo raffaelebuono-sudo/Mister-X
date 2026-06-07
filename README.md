@@ -367,3 +367,44 @@ Logs landen in `data/logs/`:
 - **Mikrofon-Berechtigung**: macOS fragt beim ersten Start nach Mikrofon-
   Zugriff. Im LaunchAgent-Modus muss diese Berechtigung manuell unter
   *Systemeinstellungen → Datenschutz → Mikrofon* erteilt werden.
+
+## 2D-Serien-Generator (`series_generator.py`)
+
+Eigenständiges Skript, das aus einer einzigen Idee **ganze 2D-Serien-Folgen**
+erzeugt: Drehbuch (Claude) → 2D-Bilder pro Szene → optionale Erzähler-Stimme
+→ fertiges `.mp4`-Video.
+
+```bash
+# Eine Folge – läuft sofort, ohne extra Bild-Key (Pillow-2D-Panels)
+python series_generator.py --idea "Eine mutige Maus im Weltraum"
+
+# Drei Folgen, je 6 Szenen, mit Erzähler-Stimme
+python series_generator.py --idea "Detektiv-Katze löst Fälle" \
+    --episodes 3 --scenes 6 --narrate
+
+# Nur Drehbuch + Bilder, kein Video (schnell)
+python series_generator.py --idea "Roboter lernt kochen" --no-video
+```
+
+Wichtigste Optionen (deutsche Aliase in Klammern):
+
+| Option | Bedeutung | Standard |
+|--------|-----------|----------|
+| `--idea` (`--konzept`) | Serien-Idee (Pflicht) | – |
+| `--episodes` (`--folgen`) | Anzahl Folgen | 1 |
+| `--scenes` (`--szenen`) | Szenen pro Folge | 5 |
+| `--style` (`--stil`) | Visueller Stil | flacher Cartoon |
+| `--lang` (`--sprache`) | Sprache der Texte | Deutsch |
+| `--narrate` | Erzähler-Stimme erzeugen | aus |
+| `--no-video` | nur Drehbuch + Bilder | aus |
+| `--width` / `--height` / `--fps` | Video-Format | 1280×720, 24 fps |
+| `--seconds-per-scene` | Dauer je Szene | 4.0 s |
+
+**Bildquelle:** Ist `OPENAI_API_KEY` gesetzt, werden die Szenen über die
+OpenAI-Bild-API generiert. Andernfalls zeichnet das Skript stimmige
+2D-Comic-Panels mit Pillow – läuft also ohne zusätzlichen Key.
+**Video** benötigt `ffmpeg`; fehlt es, werden Drehbuch und Bilder trotzdem
+erzeugt und der Video-Schritt sauber übersprungen.
+
+Alles landet unter `output/serien/<serientitel>/` (Drehbuch als
+`drehbuch.json`, je Folge ein Ordner mit `frames/` und `.mp4`).
