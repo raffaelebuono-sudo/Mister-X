@@ -368,11 +368,54 @@ Logs landen in `data/logs/`:
   Zugriff. Im LaunchAgent-Modus muss diese Berechtigung manuell unter
   *Systemeinstellungen → Datenschutz → Mikrofon* erteilt werden.
 
-## 2D-Serien-Generator (`series_generator.py`)
+## Animierter Serien-Generator (`episode_generator.py`)
 
-Eigenständiges Skript, das aus einer einzigen Idee **ganze 2D-Serien-Folgen**
-erzeugt: Drehbuch (Claude) → 2D-Bilder pro Szene → optionale Erzähler-Stimme
-→ fertiges `.mp4`-Video.
+Erzeugt **ganze animierte Folgen** mit Figuren, die sich bewegen und reden
+(Stil: 2D-Sitcom à la *Lower Decks*). Die KI schreibt das komplette
+Drehbuch, dann werden die Figuren prozedural animiert und vertont.
+
+```bash
+# Kurze Test-Folge (~2 Min)
+python episode_generator.py --idea "Sternenflotten-Crew voller Chaos" --minutes 2
+
+# Lange Folge (Ziel 40 Min) mit echten Stimmen
+python episode_generator.py --idea "Detektiv-Katze im All" --minutes 40 --voice
+
+# Aus vorhandenem Drehbuch neu rendern (ohne Claude-Aufruf)
+python episode_generator.py --script-json output/serien/.../drehbuch.json
+```
+
+Was passiert:
+
+1. **Drehbuch** – Claude schreibt in Teilen Serien-Bibel, Figuren,
+   Szenen-Outline und pro Szene die vollen Dialoge. So sind auch lange
+   Folgen möglich (`--minutes` steuert die Ziel-Länge).
+2. **Animation** (`animation_engine.py`) – jede Figur wird aus Körperteilen
+   pro Frame neu posiert: **Lauf-Zyklus, Wippen, Blinzeln, Gesten** und
+   **Lippen-Sync**. Figuren bleiben über die ganze Folge konsistent.
+3. **Stimmen** – mit `--voice` bekommt jede Figur eine eigene Stimme
+   (ElevenLabs falls `ELEVENLABS_API_KEY`, sonst macOS `say`); der Mund
+   bewegt sich nach der echten Audio-Lautstärke. Ohne TTS: prozedurale
+   Lippen-Bewegung.
+4. **Schnitt** – jede Szene wird zu einem vertonten Clip; alle Szenen +
+   Titelkarte werden per `ffmpeg` zur fertigen `.mp4` montiert.
+
+Wichtige Optionen: `--minutes` (Ziel-Länge), `--voice` (echte Stimmen),
+`--lang`, `--width`/`--height`/`--fps`, `--script-json` (neu rendern).
+
+> **Ehrlich:** Das Ergebnis ist ein sauberer, vollständig animierter
+> Cartoon mit sprechenden Figuren – aber **keine** Studio-Qualität wie das
+> echte *Lower Decks*. Eine 40-Minuten-Folge zu rendern dauert je nach
+> Rechner spürbar (viele Tausend Frames). `ffmpeg`, `numpy` und `Pillow`
+> sind erforderlich.
+
+---
+
+## 2D-Standbild-Serien (`series_generator.py`)
+
+Schlankere Variante: aus einer Idee Drehbuch (Claude) → 2D-Bilder pro Szene
+→ optionale Erzähler-Stimme → fertiges `.mp4` (Slideshow mit Untertiteln).
+Gut für schnelle Storyboards.
 
 ```bash
 # Eine Folge – läuft sofort, ohne extra Bild-Key (Pillow-2D-Panels)
