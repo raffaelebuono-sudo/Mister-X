@@ -15,3 +15,4 @@ Pillow>=10.0.0             # Computer Use: Bilder skalieren
 
 # Optional
 elevenlabs>=1.0.0          # Natürliche deutsche Stimme (sonst macOS 'say')
+openai>=1.0.0              # Optional: 2D-Serien-Generator – OpenAI-Bild-API
